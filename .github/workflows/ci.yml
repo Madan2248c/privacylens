@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  core-ts:
+    name: TypeScript SDK
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+          cache-dependency-path: packages/core-ts/package-lock.json
+      - run: npm ci
+        working-directory: packages/core-ts
+      - run: npm run typecheck
+        working-directory: packages/core-ts
+      - run: npm run lint
+        working-directory: packages/core-ts
+      - run: npm test
+        working-directory: packages/core-ts
+      - run: npm run build
+        working-directory: packages/core-ts
+
+  core-py:
+    name: Python SDK
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -e ".[dev]"
+        working-directory: packages/core-py
+      - run: ruff check .
+        working-directory: packages/core-py
+      - run: mypy src
+        working-directory: packages/core-py
+      - run: pytest
+        working-directory: packages/core-py

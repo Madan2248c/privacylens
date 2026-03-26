@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PrivacyLens Config",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Schema version string"
+    },
+    "detectors": {
+      "type": "object",
+      "description": "Map of detector name to detector configuration",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether this detector is active"
+          },
+          "patterns": {
+            "type": "array",
+            "description": "Custom regex patterns to apply in addition to built-ins",
+            "items": {
+              "type": "object",
+              "required": ["entity_type", "pattern"],
+              "additionalProperties": false,
+              "properties": {
+                "entity_type": {
+                  "type": "string",
+                  "description": "Entity type label for matched spans"
+                },
+                "pattern": {
+                  "type": "string",
+                  "description": "Regular expression pattern string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "vault": {
+      "type": "string",
+      "enum": ["memory", "redis", "sqlite"],
+      "description": "Session vault backend to use"
+    }
+  }
+}

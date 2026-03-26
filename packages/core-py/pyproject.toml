@@ -1,0 +1,52 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "privacylens"
+version = "0.1.0"
+description = "Transparent PII masking for LLM clients"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dependencies = [
+    "pyyaml>=6.0",
+    "jsonschema>=4.0",
+]
+
+[project.optional-dependencies]
+pii = ["presidio-analyzer", "presidio-anonymizer"]
+semantic = ["gliner"]
+redis = ["redis"]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.23",
+    "hypothesis>=6.0",
+    "ruff>=0.4",
+    "mypy>=1.0",
+    "pyyaml>=6.0",
+    "jsonschema>=4.0",
+    "respx>=0.20",
+    "httpx>=0.25",
+    "openai>=1.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/privacylens"]
+
+[tool.hatch.envs.default]
+features = ["dev"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.mypy]
+strict = true
+python_version = "3.10"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
