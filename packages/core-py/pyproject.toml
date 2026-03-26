@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "privacylens"
-version = "0.1.0"
+version = "0.1.1"
 description = "Transparent PII masking for LLM clients — keep sensitive data out of your AI prompts"
 readme = "README.md"
 license = { text = "MIT" }

@@ -6,15 +6,19 @@
 [![PyPI](https://img.shields.io/pypi/v/privacylens)](https://pypi.org/project/privacylens/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/Madan2248c/privacylens/blob/main/LICENSE)
 
-## The Problem
+---
 
-Every time you send a prompt to an LLM, you risk leaking PII — names, emails, phone numbers, SSNs. PrivacyLens automatically detects and replaces sensitive data with anonymous tokens before the prompt leaves your app, then restores the original values when the response comes back.
+## Why?
+
+Every prompt you send to an LLM can leak PII — names, emails, phone numbers, SSNs. PrivacyLens intercepts your prompts, replaces PII with anonymous tokens, and restores the original values when the response comes back. Your LLM never sees real data.
 
 ```
-"Email john@example.com"  →  "Email [EMAIL_1]"  →  LLM  →  "[EMAIL_1] notified"  →  "john@example.com notified"
+Input:  "Email john@example.com about the project"
+Sent:   "Email [EMAIL_1] about the project"         ← LLM sees this
+Output: "I've emailed john@example.com"              ← Your app sees this
 ```
 
-Your LLM never sees real PII. Your app gets back the original values. Zero code changes needed.
+---
 
 ## Install
 
@@ -22,62 +26,97 @@ Your LLM never sees real PII. Your app gets back the original values. Zero code 
 pip install privacylens
 ```
 
-Optional detectors:
+---
 
-```bash
-pip install privacylens[pii]       # Presidio (names, addresses, credit cards, 50+ types)
-pip install privacylens[semantic]   # GLiNER ML-based detection
-pip install privacylens[redis]      # Redis vault backend
-```
+## Usage
 
-## Quick Start
-
-Wrap your LLM client with `shield()` — that's it:
+### Step 1: Wrap your client
 
 ```python
 from privacylens import shield
+
+# Pick your LLM client — wrap it with shield()
 import openai
-
 client = shield(openai.OpenAI())
+```
 
+### Step 2: Use it normally
+
+```python
 response = client.chat.completions.create(
     model="gpt-4o",
-    messages=[{"role": "user", "content": "My name is John Doe, email: john@example.com"}],
+    messages=[{
+        "role": "user",
+        "content": "My name is John Doe and my email is john@example.com. Write me a welcome email."
+    }],
 )
-print(response.choices[0].message.content)  # Original PII restored automatically
+
+print(response.choices[0].message.content)
+# Output contains "John Doe" and "john@example.com" — restored automatically
 ```
 
-## Supported Clients
+That's it. **No other code changes needed.** The PII is masked before it reaches the LLM and unmasked in the response.
+
+---
+
+## Works With Every Major LLM Client
 
 ```python
 from privacylens import shield
 
-client = shield(openai.OpenAI())              # OpenAI
-client = shield(openai.AsyncOpenAI())         # OpenAI (async)
-client = shield(anthropic.Anthropic())        # Anthropic
-client = shield(anthropic.AsyncAnthropic())   # Anthropic (async)
-handler = shield(my_langchain_model)          # LangChain
-client = shield(my_crewai_agent)              # CrewAI
-wrapper = shield(my_strands_model)            # Strands
+# OpenAI
+client = shield(openai.OpenAI())
+client = shield(openai.AsyncOpenAI())
+
+# Anthropic
+client = shield(anthropic.Anthropic())
+client = shield(anthropic.AsyncAnthropic())
+
+# LangChain — returns a callback handler
+handler = shield(my_langchain_chat_model)
+
+# CrewAI
+adapter = shield(my_crewai_agent)
+
+# Strands
+wrapper = shield(my_strands_model)
 ```
+
+Each wrapped client behaves exactly like the original. Same methods, same parameters, same return types.
+
+---
 
 ## What Gets Detected
 
-Built-in (regex):
+### Built-in (regex, zero dependencies)
 
-| Entity | Example | Token |
-|--------|---------|-------|
+| Entity | Example Input | What LLM Sees |
+|--------|--------------|---------------|
 | Email | `john@example.com` | `[EMAIL_1]` |
 | Phone | `555-123-4567` | `[PHONE_1]` |
 | SSN | `123-45-6789` | `[SSN_1]` |
 
-With `privacylens[pii]`: Names, addresses, credit cards, dates of birth, and 50+ entity types via Presidio.
+### Optional: Presidio (50+ entity types)
 
-With `privacylens[semantic]`: ML-based entity detection via GLiNER.
+```bash
+pip install privacylens[pii]
+```
 
-## Configuration
+Detects names, addresses, credit card numbers, dates of birth, passport numbers, and more using Microsoft Presidio.
 
-Create a `privacylens.yaml` in your project root:
+### Optional: GLiNER (ML-based semantic detection)
+
+```bash
+pip install privacylens[semantic]
+```
+
+Uses a neural model to detect entities that regex can't catch.
+
+---
+
+## Custom Detectors
+
+Add your own patterns via `privacylens.yaml` in your project root:
 
 ```yaml
 detectors:
@@ -85,25 +124,85 @@ detectors:
     name: email
     pattern: '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
   - type: regex
-    name: custom_id
-    pattern: 'PROJ-\d{4,}'
-
-vault: memory  # or "sqlite" or "redis"
+    name: employee_id
+    pattern: 'EMP-\d{5,}'
+  - type: regex
+    name: project_code
+    pattern: 'PROJ-[A-Z]{2,4}-\d{3,}'
 ```
 
-## How It Works
+---
 
-1. **Analyze** — Detectors scan the prompt for PII
-2. **Tokenize** — PII is replaced with deterministic tokens (`[EMAIL_1]`)
-3. **Store** — Token↔value mappings saved in a vault (memory/SQLite/Redis)
-4. **Send** — Sanitized prompt goes to the LLM
-5. **Detokenize** — Tokens in the response are replaced with original values
+## Vault Backends
+
+Tokens are stored in a vault so they can be restored later. Three backends available:
+
+```yaml
+# In-memory (default) — fast, lost on restart
+vault: memory
+
+# SQLite — persists to disk
+vault: sqlite
+
+# Redis — shared across processes
+vault: redis
+```
+
+For Redis:
+
+```bash
+pip install privacylens[redis]
+```
+
+---
+
+## Inspect Without Masking
+
+See what would be detected without actually masking anything:
+
+```python
+from privacylens import inspect
+
+entities = inspect("Contact john@example.com or call 555-123-4567")
+
+for entity in entities:
+    print(f"{entity.entity_type}: '{entity.value}' at [{entity.start}:{entity.end}]")
+
+# EMAIL: 'john@example.com' at [8:24]
+# PHONE: '555-123-4567' at [33:45]
+```
+
+---
+
+## Low-Level API
+
+For full control over the pipeline:
+
+```python
+from privacylens.core.pipeline import Pipeline
+from privacylens.core.config import load_config
+
+config = load_config()
+pipeline = Pipeline(config)
+
+# Tokenize
+messages = [{"role": "user", "content": "Email john@example.com"}]
+tokenized = pipeline.tokenize_messages(messages, session_id="s1")
+
+# Send to LLM (tokenized messages have PII replaced)
+llm_response = call_your_llm(tokenized)
+
+# Detokenize
+restored = pipeline.detokenize(llm_response, session_id="s1")
+```
+
+---
 
 ## Links
 
-- [GitHub](https://github.com/Madan2248c/privacylens)
-- [TypeScript SDK](https://github.com/Madan2248c/privacylens/tree/main/packages/core-ts) (also available as `npm install privacylens`)
-- [Contributing](https://github.com/Madan2248c/privacylens/blob/main/CONTRIBUTING.md)
+- **GitHub**: [github.com/Madan2248c/privacylens](https://github.com/Madan2248c/privacylens)
+- **TypeScript SDK**: `npm install privacylens` — [docs](https://github.com/Madan2248c/privacylens/tree/main/packages/core-ts)
+- **Contributing**: [CONTRIBUTING.md](https://github.com/Madan2248c/privacylens/blob/main/CONTRIBUTING.md)
 
 ## License
 
