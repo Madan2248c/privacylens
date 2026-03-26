@@ -9,6 +9,10 @@ description = "Transparent PII masking for LLM clients — keep sensitive data o
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10"
+dependencies = [
+    "pyyaml>=6.0",
+    "jsonschema>=4.0",
+]
 keywords = ["pii", "privacy", "llm", "openai", "anthropic", "masking", "tokenization"]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -27,10 +31,6 @@ classifiers = [
 Homepage = "https://github.com/Madan2248c/privacylens"
 Repository = "https://github.com/Madan2248c/privacylens"
 Issues = "https://github.com/Madan2248c/privacylens/issues"
-dependencies = [
-    "pyyaml>=6.0",
-    "jsonschema>=4.0",
-]
 
 [project.optional-dependencies]
 pii = ["presidio-analyzer", "presidio-anonymizer"]
