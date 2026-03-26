@@ -75,12 +75,12 @@ Create a `privacylens.yaml` (or `.json`) in your project root:
 
 ```yaml
 detectors:
-  - type: regex
-    name: email
-    pattern: '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
-  - type: regex
-    name: phone
-    pattern: '\b\d{3}[-.]?\d{3}[-.]?\d{4}\b'
+  regex:
+    patterns:
+      - entity_type: EMAIL
+        pattern: '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+      - entity_type: PHONE
+        pattern: '\b\d{3}[-.]?\d{3}[-.]?\d{4}\b'
 ```
 
 ## Architecture

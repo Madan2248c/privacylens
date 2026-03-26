@@ -120,15 +120,14 @@ Add your own patterns via `privacylens.yaml` in your project root:
 
 ```yaml
 detectors:
-  - type: regex
-    name: email
-    pattern: '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
-  - type: regex
-    name: employee_id
-    pattern: 'EMP-\d{5,}'
-  - type: regex
-    name: project_code
-    pattern: 'PROJ-[A-Z]{2,4}-\d{3,}'
+  regex:
+    patterns:
+      - entity_type: EMAIL
+        pattern: '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+      - entity_type: EMPLOYEE_ID
+        pattern: 'EMP-\d{5,}'
+      - entity_type: PROJECT_CODE
+        pattern: 'PROJ-[A-Z]{2,4}-\d{3,}'
 ```
 
 ---

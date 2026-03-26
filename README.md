@@ -88,15 +88,14 @@ Create a `privacylens.yaml` in your project root to customize detection:
 
 ```yaml
 detectors:
-  - type: regex
-    name: email
-    pattern: '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
-  - type: regex
-    name: phone
-    pattern: '\b\d{3}[-.]?\d{3}[-.]?\d{4}\b'
-  - type: regex
-    name: custom_id
-    pattern: 'PROJ-\d{4,}'
+  regex:
+    patterns:
+      - entity_type: EMAIL
+        pattern: '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+      - entity_type: PHONE
+        pattern: '\b\d{3}[-.]?\d{3}[-.]?\d{4}\b'
+      - entity_type: CUSTOM_ID
+        pattern: 'PROJ-\d{4,}'
 
 vault: memory  # or "sqlite" or "redis"
 ```
