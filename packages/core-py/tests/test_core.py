@@ -380,8 +380,8 @@ class TestShieldOpenAI:
     def test_openai_client_returns_openai_adapter(self) -> None:
         MagicMock()
         mock_openai = MagicMock()
-        mock_openai.OpenAI = type("OpenAI", (), {})
-        mock_openai.AsyncOpenAI = type("AsyncOpenAI", (), {})
+        mock_openai.OpenAI = type("OpenAI", (), {"chat": MagicMock()})
+        mock_openai.AsyncOpenAI = type("AsyncOpenAI", (), {"chat": MagicMock()})
         client = mock_openai.OpenAI()
 
         with patch.dict("sys.modules", {"openai": mock_openai}):
@@ -391,8 +391,8 @@ class TestShieldOpenAI:
 
     def test_async_openai_client_returns_openai_adapter(self) -> None:
         mock_openai = MagicMock()
-        mock_openai.OpenAI = type("OpenAI", (), {})
-        mock_openai.AsyncOpenAI = type("AsyncOpenAI", (), {})
+        mock_openai.OpenAI = type("OpenAI", (), {"chat": MagicMock()})
+        mock_openai.AsyncOpenAI = type("AsyncOpenAI", (), {"chat": MagicMock()})
         client = mock_openai.AsyncOpenAI()
 
         with patch.dict("sys.modules", {"openai": mock_openai}):
@@ -404,8 +404,8 @@ class TestShieldOpenAI:
 class TestShieldAnthropic:
     def test_anthropic_client_returns_anthropic_adapter(self) -> None:
         mock_anthropic = MagicMock()
-        mock_anthropic.Anthropic = type("Anthropic", (), {})
-        mock_anthropic.AsyncAnthropic = type("AsyncAnthropic", (), {})
+        mock_anthropic.Anthropic = type("Anthropic", (), {"messages": MagicMock()})
+        mock_anthropic.AsyncAnthropic = type("AsyncAnthropic", (), {"messages": MagicMock()})
         client = mock_anthropic.Anthropic()
 
         with patch.dict("sys.modules", {"openai": None, "anthropic": mock_anthropic}):  # type: ignore[dict-item]
@@ -415,8 +415,8 @@ class TestShieldAnthropic:
 
     def test_async_anthropic_client_returns_anthropic_adapter(self) -> None:
         mock_anthropic = MagicMock()
-        mock_anthropic.Anthropic = type("Anthropic", (), {})
-        mock_anthropic.AsyncAnthropic = type("AsyncAnthropic", (), {})
+        mock_anthropic.Anthropic = type("Anthropic", (), {"messages": MagicMock()})
+        mock_anthropic.AsyncAnthropic = type("AsyncAnthropic", (), {"messages": MagicMock()})
         client = mock_anthropic.AsyncAnthropic()
 
         with patch.dict("sys.modules", {"openai": None, "anthropic": mock_anthropic}):  # type: ignore[dict-item]
@@ -474,8 +474,8 @@ class TestShieldDefaultConfig:
     def test_default_config_applied_when_no_kwargs(self) -> None:
         """shield() with no kwargs should use default config (regex detector, memory vault)."""
         mock_openai = MagicMock()
-        mock_openai.OpenAI = type("OpenAI", (), {})
-        mock_openai.AsyncOpenAI = type("AsyncOpenAI", (), {})
+        mock_openai.OpenAI = type("OpenAI", (), {"chat": MagicMock()})
+        mock_openai.AsyncOpenAI = type("AsyncOpenAI", (), {"chat": MagicMock()})
         client = mock_openai.OpenAI()
 
         with patch.dict("sys.modules", {"openai": mock_openai}):
@@ -489,8 +489,8 @@ class TestShieldDefaultConfig:
     def test_kwargs_passed_to_config(self) -> None:
         """shield() kwargs are forwarded to load_config()."""
         mock_openai = MagicMock()
-        mock_openai.OpenAI = type("OpenAI", (), {})
-        mock_openai.AsyncOpenAI = type("AsyncOpenAI", (), {})
+        mock_openai.OpenAI = type("OpenAI", (), {"chat": MagicMock()})
+        mock_openai.AsyncOpenAI = type("AsyncOpenAI", (), {"chat": MagicMock()})
         client = mock_openai.OpenAI()
 
         with patch.dict("sys.modules", {"openai": mock_openai}):
