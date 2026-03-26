@@ -2,71 +2,89 @@
 
 > Transparent PII masking for LLM clients — keep sensitive data out of your AI prompts.
 
+[![CI](https://github.com/Madan2248c/privacylens/actions/workflows/ci.yml/badge.svg)](https://github.com/Madan2248c/privacylens/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/privacylens)](https://pypi.org/project/privacylens/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.4-blue)](https://www.typescriptlang.org/)
-[![Python](https://img.shields.io/badge/Python-3.10+-green)](https://www.python.org/)
 
-## What it does
+## The Problem
 
-PrivacyLens sits between your application and any LLM API. Before a prompt is sent, it detects and replaces PII (names, emails, phone numbers, etc.) with anonymous tokens. After the LLM responds, it restores the original values — transparently.
+Every time you send a prompt to an LLM, you risk leaking PII — names, emails, phone numbers, SSNs. PrivacyLens fixes this by automatically detecting and replacing sensitive data with anonymous tokens before the prompt leaves your app, then restoring the original values when the response comes back.
 
 ```
-Your app  →  [tokenize PII]  →  LLM API
-Your app  ←  [detokenize]    ←  LLM response
+"Email john@example.com"  →  "Email [EMAIL_1]"  →  LLM  →  "[EMAIL_1] notified"  →  "john@example.com notified"
 ```
 
-## Packages
+Your LLM never sees real PII. Your app gets back the original values. Zero code changes needed.
 
-| Package | Language | Description |
-|---------|----------|-------------|
-| [`packages/core-ts`](./packages/core-ts) | TypeScript | Drop-in adapters for OpenAI & Vercel AI SDK |
-| [`packages/core-py`](./packages/core-py) | Python | Python SDK with OpenAI adapter |
+## Supported SDKs
 
-## Features
-
-- 🔍 Regex-based PII detection (extensible)
-- 🔄 Transparent tokenize/detokenize pipeline
-- 🔌 Drop-in adapters for **OpenAI** and **Vercel AI SDK**
-- ⚙️ YAML/JSON config support
-- 📦 Minimal dependencies
-- 🧪 Fully tested
+| Package | Install | Adapters |
+|---------|---------|----------|
+| [Python SDK](./packages/core-py) | `pip install privacylens` | OpenAI, Anthropic, LangChain, CrewAI, Strands |
+| [TypeScript SDK](./packages/core-ts) | `npm install privacylens` | OpenAI, Vercel AI SDK |
 
 ## Quick Start
 
-### TypeScript
-
-```bash
-npm install privacylens
-```
-
-```ts
-import OpenAI from "openai";
-import { shieldOpenAI } from "privacylens/adapters/openai";
-
-const client = shieldOpenAI(new OpenAI());
-const response = await client.chat.completions.create({
-  model: "gpt-4o",
-  messages: [{ role: "user", content: "My name is John Doe, email: john@example.com." }],
-});
-// PII is masked before sending, restored in the response
-```
-
-### Python
-
-```bash
-pip install privacylens
-```
+### Python — one line to shield any client
 
 ```python
 from privacylens import shield
 import openai
 
+# Wrap your client — that's it
 client = shield(openai.OpenAI())
+
+# Use it exactly as before. PII is masked/unmasked automatically.
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "My name is John Doe, email: john@example.com"}],
+)
+print(response.choices[0].message.content)  # Original PII restored
 ```
+
+Works the same way with Anthropic, LangChain, CrewAI, and Strands:
+
+```python
+client = shield(anthropic.Anthropic())       # Anthropic
+handler = shield(my_langchain_model)          # LangChain
+client = shield(my_crewai_agent)              # CrewAI
+```
+
+### TypeScript — drop-in OpenAI wrapper
+
+```typescript
+import OpenAI from "openai";
+import { shieldOpenAI } from "privacylens/adapters/openai";
+
+const client = shieldOpenAI(new OpenAI());
+
+// Use normally — PII is masked before sending, restored in the response
+const response = await client.chat.completions.create({
+  model: "gpt-4o",
+  messages: [{ role: "user", content: "Contact john@example.com about the project" }],
+});
+```
+
+## What Gets Detected
+
+Out of the box (regex-based, extensible):
+
+| Entity | Example |
+|--------|---------|
+| Email | `john@example.com` → `[EMAIL_1]` |
+| Phone | `555-123-4567` → `[PHONE_1]` |
+| SSN | `123-45-6789` → `[SSN_1]` |
+
+With optional detectors:
+
+| Detector | Install | Entities |
+|----------|---------|----------|
+| Presidio | `pip install privacylens[pii]` | Names, addresses, credit cards, 50+ types |
+| GLiNER (semantic) | `pip install privacylens[semantic]` | ML-based entity detection |
 
 ## Configuration
 
-Create a `privacylens.yaml` in your project root:
+Create a `privacylens.yaml` in your project root to customize detection:
 
 ```yaml
 detectors:
@@ -76,18 +94,55 @@ detectors:
   - type: regex
     name: phone
     pattern: '\b\d{3}[-.]?\d{3}[-.]?\d{4}\b'
+  - type: regex
+    name: custom_id
+    pattern: 'PROJ-\d{4,}'
+
+vault: memory  # or "sqlite" or "redis"
 ```
 
-See [`privacylens.schema.json`](./privacylens.schema.json) for the full config schema.
+## How It Works
+
+```
+┌──────────┐     ┌───────────┐     ┌─────────┐     ┌──────────────┐
+│ Your App │ ──▶ │ Tokenizer │ ──▶ │ LLM API │ ──▶ │ Detokenizer  │ ──▶ Response
+│          │     │           │     │         │     │              │    (PII restored)
+│ "Email   │     │ "Email    │     │         │     │ "[EMAIL_1]   │
+│  john@.."│     │ [EMAIL_1]"│     │         │     │  confirmed"  │
+└──────────┘     └───────────┘     └─────────┘     └──────────────┘
+                       │                                  ▲
+                       ▼                                  │
+                 ┌───────────┐                            │
+                 │   Vault   │ ────────────────────────────
+                 │ [EMAIL_1] │
+                 │ =john@..  │
+                 └───────────┘
+```
+
+1. **Analyze** — Detectors scan the prompt for PII entities
+2. **Tokenize** — Each PII value is replaced with a deterministic token (`[EMAIL_1]`, `[PHONE_1]`)
+3. **Store** — Token↔value mappings are stored in a session vault (memory, SQLite, or Redis)
+4. **Send** — The sanitized prompt goes to the LLM
+5. **Detokenize** — Tokens in the LLM response are replaced with original values
 
 ## Repository Structure
 
 ```
 privacylens/
 ├── packages/
-│   ├── core-ts/          # TypeScript/Node.js SDK
-│   └── core-py/          # Python SDK
-└── privacylens.schema.json
+│   ├── core-py/          # Python SDK
+│   │   ├── src/privacylens/
+│   │   │   ├── adapters/     # OpenAI, Anthropic, LangChain, CrewAI, Strands
+│   │   │   ├── core/         # Pipeline, Analyzer, Tokenizer, Vault
+│   │   │   └── detectors/    # Regex, Presidio, GLiNER
+│   │   └── tests/
+│   └── core-ts/          # TypeScript SDK
+│       ├── src/
+│       │   ├── adapters/     # OpenAI, Vercel AI SDK
+│       │   ├── core/         # Pipeline, Analyzer, Tokenizer, Vault
+│       │   └── detectors/    # Regex
+│       └── tests/
+└── privacylens.schema.json   # Config schema
 ```
 
 ## Contributing
