@@ -8,19 +8,16 @@ from __future__ import annotations
 import json
 import time
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import httpx
 import pytest
 import respx
-
-import openai
 from openai import AsyncOpenAI, OpenAI
 
 from privacylens.adapters.openai import OpenAIAdapter, _StreamBuffer
 from privacylens.core.config import load_config
 from privacylens.core.pipeline import Pipeline
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -484,7 +481,6 @@ class TestOpenAIAdapterRepr:
 # Anthropic adapter helpers
 # ---------------------------------------------------------------------------
 
-import anthropic
 from anthropic import Anthropic, AsyncAnthropic
 
 from privacylens.adapters.anthropic import AnthropicAdapter
@@ -921,7 +917,7 @@ class TestCrewAIAdapter:
         """Tokens in the LLM response must be replaced with original values."""
         def mock_llm(messages: list[dict], **kwargs: Any) -> str:
             # Echo back the token that was sent
-            return f"I'll contact [EMAIL_1] shortly."
+            return "I'll contact [EMAIL_1] shortly."
 
         pipeline = _make_pipeline()
         adapter = CrewAIAdapter(mock_llm, pipeline)

@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import re
 import uuid
-from typing import TYPE_CHECKING, Any, AsyncIterator, Iterator
+from collections.abc import AsyncIterator, Iterator
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from privacylens.core.pipeline import Pipeline

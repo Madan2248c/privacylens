@@ -21,7 +21,9 @@ class PiiDetector:
 
     def __init__(self) -> None:
         try:
-            from presidio_analyzer import AnalyzerEngine  # type: ignore[import-not-found]
+            from presidio_analyzer import (
+                AnalyzerEngine,  # type: ignore[import-not-found]
+            )
         except ImportError:
             raise ImportError("Install Presidio: pip install privacylens[pii]")
         self._engine = AnalyzerEngine()

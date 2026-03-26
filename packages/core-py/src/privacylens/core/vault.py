@@ -6,9 +6,12 @@ mappings scoped by session ID.
 
 from __future__ import annotations
 
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from privacylens.core.models import Config
+
+if TYPE_CHECKING:
+    import sqlite3
 
 
 @runtime_checkable
@@ -113,17 +116,17 @@ class SqliteVault:
         self._db_path = db_path
         self._sqlite3 = sqlite3
         # Keep a persistent connection for in-memory DBs; file DBs use per-op connections.
-        self._conn: "sqlite3.Connection | None" = (
+        self._conn: sqlite3.Connection | None = (
             sqlite3.connect(":memory:") if db_path == ":memory:" else None
         )
         self._init_table()
 
-    def _connect(self) -> "sqlite3.Connection":
+    def _connect(self) -> sqlite3.Connection:
         if self._conn is not None:
             return self._conn
         return self._sqlite3.connect(self._db_path)
 
-    def _close(self, conn: "sqlite3.Connection") -> None:
+    def _close(self, conn: sqlite3.Connection) -> None:
         # Only close connections we opened ourselves (not the persistent one).
         if conn is not self._conn:
             conn.close()

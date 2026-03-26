@@ -8,7 +8,6 @@ from __future__ import annotations
 import subprocess
 import sys
 
-
 _FORBIDDEN_MODULES = ["spacy", "transformers", "torch", "redis"]
 
 _CHECK_SCRIPT = """

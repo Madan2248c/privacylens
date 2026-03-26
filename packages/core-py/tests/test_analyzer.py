@@ -13,8 +13,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from privacylens.core.analyzer import Analyzer, get_detector, register_detector
-from privacylens.core.models import Config, Detector, EntitySpan
-
+from privacylens.core.models import Config, EntitySpan
 
 # ---------------------------------------------------------------------------
 # Strategies
@@ -266,7 +265,12 @@ def test_detector_exception_logs_warning(spans: list[EntitySpan]) -> None:
 # ---------------------------------------------------------------------------
 
 
-@given(name=st.text(min_size=1, max_size=50, alphabet=st.characters(whitelist_categories=("Lu", "Ll", "Nd"), whitelist_characters="_-")))
+@given(
+    name=st.text(
+        min_size=1, max_size=50,
+        alphabet=st.characters(whitelist_categories=("Lu", "Ll", "Nd"), whitelist_characters="_-"),
+    )
+)
 @settings(max_examples=200)
 def test_detector_registry_round_trip(name: str) -> None:
     """Property 9: register then get returns the same detector instance.
@@ -285,7 +289,10 @@ def test_detector_registry_round_trip(name: str) -> None:
 
 
 @given(
-    name=st.text(min_size=1, max_size=30, alphabet=st.characters(whitelist_categories=("Lu", "Ll", "Nd"), whitelist_characters="_")),
+    name=st.text(
+        min_size=1, max_size=30,
+        alphabet=st.characters(whitelist_categories=("Lu", "Ll", "Nd"), whitelist_characters="_"),
+    ),
 )
 @settings(max_examples=100)
 def test_detector_registry_overwrite(name: str) -> None:
@@ -527,7 +534,7 @@ class TestOverlapResolutionUnit:
 
 
 import contextlib
-from typing import Generator
+from collections.abc import Generator
 
 
 @contextlib.contextmanager

@@ -16,9 +16,10 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Generator
+from typing import Any
 
 import pytest
 import yaml
@@ -27,7 +28,6 @@ from hypothesis import strategies as st
 
 from privacylens.core.config import dump_config, load_config
 from privacylens.core.models import Config
-
 
 # ---------------------------------------------------------------------------
 # Helpers

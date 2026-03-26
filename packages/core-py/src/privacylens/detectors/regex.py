@@ -6,7 +6,6 @@ Zero runtime dependencies beyond the standard library (``re`` only).
 from __future__ import annotations
 
 import re
-from typing import Sequence
 
 from privacylens.core.models import DetectorConfig, EntitySpan
 

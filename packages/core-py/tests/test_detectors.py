@@ -13,8 +13,6 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from privacylens.detectors.regex import RegexDetector
-from privacylens.core.models import EntitySpan
-
 
 # ---------------------------------------------------------------------------
 # Strategies for generating valid PII strings
@@ -300,7 +298,6 @@ from unittest.mock import MagicMock, patch
 
 from privacylens.core.models import Detector
 
-
 # ---------------------------------------------------------------------------
 # Helpers: build a fake presidio_analyzer module so we can import PiiDetector
 # without the real package installed.
@@ -379,6 +376,7 @@ def test_property21_pii_detector_preserves_entity_types(results: list[MagicMock]
 
 
 import builtins as _builtins
+
 _real_import = _builtins.__import__
 
 

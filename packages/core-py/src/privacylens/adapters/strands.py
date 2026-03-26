@@ -7,7 +7,11 @@ messages and restore original values in the response content blocks.
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING, Any, AsyncGenerator, AsyncIterable, Optional, Type, Union
+from collections.abc import AsyncGenerator, AsyncIterable
+from typing import (
+    TYPE_CHECKING,
+    Any,
+)
 
 if TYPE_CHECKING:
     from privacylens.core.pipeline import Pipeline
@@ -104,9 +108,9 @@ class StrandsModelWrapper(_StrandsModel):  # type: ignore[misc]
 
     def structured_output(
         self,
-        output_model: Type[Any],
+        output_model: type[Any],
         prompt: Any,
-        system_prompt: Optional[str] = None,
+        system_prompt: str | None = None,
         **kwargs: Any,
     ) -> AsyncGenerator[dict[str, Any], None]:
         """Delegate structured output to the wrapped model."""
@@ -117,11 +121,11 @@ class StrandsModelWrapper(_StrandsModel):  # type: ignore[misc]
     def stream(
         self,
         messages: Any,
-        tool_specs: Optional[list[Any]] = None,
-        system_prompt: Optional[str] = None,
+        tool_specs: list[Any] | None = None,
+        system_prompt: str | None = None,
         *,
         tool_choice: Any = None,
-        system_prompt_content: Optional[list[Any]] = None,
+        system_prompt_content: list[Any] | None = None,
         **kwargs: Any,
     ) -> AsyncIterable[Any]:
         """Delegate streaming to the wrapped model."""

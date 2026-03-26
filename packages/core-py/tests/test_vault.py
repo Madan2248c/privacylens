@@ -3,15 +3,13 @@
 from __future__ import annotations
 
 import sys
-import unittest.mock as mock
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from privacylens.core.vault import MemoryVault, SqliteVault, _build_vault
-
 
 # ---------------------------------------------------------------------------
 # Strategies

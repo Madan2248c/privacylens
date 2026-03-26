@@ -8,7 +8,6 @@ from hypothesis import strategies as st
 
 from privacylens.core.models import Config, Detector, DetectorConfig, EntitySpan
 
-
 # ---------------------------------------------------------------------------
 # Property-based tests (Task 2.5)
 # ---------------------------------------------------------------------------
@@ -155,7 +154,6 @@ class TestDetectorProtocol:
 
 from privacylens.core.normalize import normalize_messages
 
-
 # --- Strategies ---
 
 # A message dict with required role/content plus optional extra fields
@@ -296,7 +294,6 @@ from privacylens.core.config import load_config
 from privacylens.core.pipeline import _build_detectors
 from privacylens.core.vault import MemoryVault
 
-
 # --- Property 19: inspect() has no side effects on vault state ---
 
 
@@ -381,7 +378,7 @@ from privacylens.adapters.openai import OpenAIAdapter
 
 class TestShieldOpenAI:
     def test_openai_client_returns_openai_adapter(self) -> None:
-        mock_client = MagicMock()
+        MagicMock()
         mock_openai = MagicMock()
         mock_openai.OpenAI = type("OpenAI", (), {})
         mock_openai.AsyncOpenAI = type("AsyncOpenAI", (), {})

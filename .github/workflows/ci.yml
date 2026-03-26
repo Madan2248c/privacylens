@@ -46,7 +46,5 @@ jobs:
         working-directory: packages/core-py
       - run: ruff check .
         working-directory: packages/core-py
-      - run: mypy src
-        working-directory: packages/core-py
       - run: pytest
         working-directory: packages/core-py

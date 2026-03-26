@@ -14,7 +14,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from privacylens.core.models import Config, DetectorConfig
+from privacylens.core.models import Config
 
 # Locate schema relative to this file: packages/core-py/src/privacylens/core/config.py
 # Go up: core/ -> privacylens/ -> src/ -> core-py/ -> packages/ -> workspace root
