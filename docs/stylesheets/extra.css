@@ -4,45 +4,28 @@
   bottom: 1.5rem;
   right: 1.5rem;
   z-index: 999;
-  width: 3rem;
-  height: 3rem;
-  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0 1rem;
+  height: 2.4rem;
+  border-radius: 2rem;
   border: none;
   background: var(--md-primary-fg-color);
   color: var(--md-primary-bg-color);
+  font-size: 0.78rem;
+  font-weight: 600;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.3);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
+  white-space: nowrap;
 }
 
 #ai-copy-all:hover {
-  transform: scale(1.1);
+  transform: scale(1.04);
   box-shadow: 0 5px 16px rgba(0, 0, 0, 0.35);
 }
 
 #ai-copy-all.ai-copied {
   background: #2e7d32;
-}
-
-/* Tooltip on hover */
-#ai-copy-all::after {
-  content: attr(title);
-  position: absolute;
-  right: 3.5rem;
-  background: rgba(0, 0, 0, 0.75);
-  color: #fff;
-  font-size: 0.72rem;
-  padding: 0.3rem 0.6rem;
-  border-radius: 0.3rem;
-  white-space: nowrap;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.15s;
-}
-
-#ai-copy-all:hover::after {
-  opacity: 1;
 }
