@@ -191,7 +191,7 @@ def _get_delta_content(chunk: Any) -> str | None:
         if not choices:
             return None
         delta = choices[0].delta
-        return delta.content  # may be None
+        return delta.content if isinstance(delta.content, str) or delta.content is None else str(delta.content)  # noqa: E501
     except AttributeError:
         return None
 

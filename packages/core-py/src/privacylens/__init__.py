@@ -60,7 +60,7 @@ def shield(client: object, **kwargs: object) -> object:
         pass
 
     try:
-        from strands.models import Model as StrandsModel  # type: ignore[import-untyped]
+        from strands.models import Model as StrandsModel
 
         from privacylens.adapters.strands import StrandsModelWrapper
 

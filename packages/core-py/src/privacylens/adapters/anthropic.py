@@ -165,7 +165,8 @@ def _get_text_delta(event: Any) -> str | None:
         if event.type == "content_block_delta":
             delta = event.delta
             if getattr(delta, "type", None) == "text_delta":
-                return delta.text
+                text = delta.text
+                return text if isinstance(text, str) else str(text)
     except AttributeError:
         pass
     return None

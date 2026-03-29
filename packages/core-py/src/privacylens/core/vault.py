@@ -68,7 +68,7 @@ class RedisVault:
 
     def __init__(self, url: str = "redis://localhost:6379") -> None:
         try:
-            import redis  # type: ignore[import]
+            import redis  # type: ignore[import-untyped,unused-ignore]
         except ImportError:
             raise ImportError("Install redis: pip install privacylens[redis]")
         self._client = redis.from_url(url)
@@ -177,7 +177,7 @@ class SqliteVault:
             self._close(conn)
         if row is None:
             raise KeyError(token)
-        return row[0]
+        return str(row[0])
 
     def clear(self, session_id: str) -> None:
         """Remove all token-value mappings for the given session from SQLite."""
@@ -210,10 +210,10 @@ def _build_vault(config: Config) -> MemoryVault | RedisVault | SqliteVault:
     if backend == "memory":
         return MemoryVault()
     elif backend == "redis":
-        redis_url = config.get("redis_url", "redis://localhost:6379")  # type: ignore[typeddict-item]
+        redis_url = config.get("redis_url", "redis://localhost:6379")
         return RedisVault(url=str(redis_url))
     elif backend == "sqlite":
-        db_path = config.get("sqlite_path", "privacylens.db")  # type: ignore[typeddict-item]
+        db_path = config.get("sqlite_path", "privacylens.db")
         return SqliteVault(db_path=str(db_path))
     else:
         raise ValueError(

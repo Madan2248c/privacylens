@@ -36,16 +36,16 @@ def _load_file(path: str | Path) -> dict[str, Any]:
     suffix = path.suffix.lower()
     with open(path) as f:
         if suffix in (".yaml", ".yml"):
-            import yaml  # type: ignore[import-untyped]
+            import yaml
 
-            return yaml.safe_load(f) or {}
+            return dict(yaml.safe_load(f) or {})
         elif suffix == ".json":
-            return json.load(f)
+            return dict(json.load(f))
         else:
             # Default: try YAML (superset of JSON)
-            import yaml  # type: ignore[import-untyped]
+            import yaml
 
-            return yaml.safe_load(f) or {}
+            return dict(yaml.safe_load(f) or {})
 
 
 def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
@@ -138,7 +138,7 @@ def load_config(**kwargs: Any) -> Config:
         config["on_detection"] = on_detection
 
     _validate_schema(config)
-    return config  # type: ignore[return-value]
+    return config  # type: ignore[return-value]  # TypedDict narrowing
 
 
 def dump_config(config: Config) -> str:
@@ -146,7 +146,7 @@ def dump_config(config: Config) -> str:
 
     Non-serialisable fields (``on_detection``) are excluded.
     """
-    import yaml  # type: ignore[import-untyped]
+    import yaml
 
     serialisable = {
         k: v

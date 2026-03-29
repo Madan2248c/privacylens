@@ -34,7 +34,7 @@ def _build_detectors(config: Config) -> list[Detector]:
     Returns:
         A list of instantiated :class:`~privacylens.core.models.Detector` objects.
     """
-    detectors_cfg: dict[str, Any] = config.get("detectors", {})  # type: ignore[assignment]
+    detectors_cfg: dict[str, Any] = config.get("detectors", {})
 
     # If no detectors config at all, default to RegexDetector only.
     if not detectors_cfg:
@@ -55,7 +55,7 @@ def _build_detectors(config: Config) -> list[Detector]:
         if name == "regex":
             from privacylens.detectors.regex import RegexDetector  # lazy import
 
-            result.append(RegexDetector(det_cfg or None))  # type: ignore[arg-type]
+            result.append(RegexDetector(det_cfg or None))
 
         elif name == "pii":
             from privacylens.detectors.pii import PiiDetector  # lazy import

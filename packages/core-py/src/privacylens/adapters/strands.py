@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 # subclassing.  If strands-agents is not installed we fall back to a plain
 # object base so the wrapper can still be imported without error.
 try:
-    from strands.models import Model as _StrandsModel  # type: ignore[import-untyped]
+    from strands.models import Model as _StrandsModel
 
     _STRANDS_AVAILABLE = True
 except ImportError:  # pragma: no cover
@@ -32,7 +32,7 @@ def _new_session_id() -> str:
     return str(uuid.uuid4())
 
 
-class StrandsModelWrapper(_StrandsModel):  # type: ignore[misc]
+class StrandsModelWrapper(_StrandsModel):
     """Wraps a Strands ``Model`` with PII masking.
 
     Tokenizes PII in input messages before delegating to the underlying
@@ -112,9 +112,9 @@ class StrandsModelWrapper(_StrandsModel):  # type: ignore[misc]
         prompt: Any,
         system_prompt: str | None = None,
         **kwargs: Any,
-    ) -> AsyncGenerator[dict[str, Any], None]:
+    ) -> "AsyncGenerator[dict[str, Any], None]":
         """Delegate structured output to the wrapped model."""
-        return self._model.structured_output(
+        return self._model.structured_output(  # type: ignore[no-any-return]
             output_model, prompt, system_prompt, **kwargs
         )
 
@@ -127,9 +127,9 @@ class StrandsModelWrapper(_StrandsModel):  # type: ignore[misc]
         tool_choice: Any = None,
         system_prompt_content: list[Any] | None = None,
         **kwargs: Any,
-    ) -> AsyncIterable[Any]:
+    ) -> "AsyncIterable[Any]":
         """Delegate streaming to the wrapped model."""
-        return self._model.stream(
+        return self._model.stream(  # type: ignore[no-any-return]
             messages,
             tool_specs=tool_specs,
             system_prompt=system_prompt,

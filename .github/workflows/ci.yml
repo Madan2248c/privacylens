@@ -8,11 +8,11 @@ on:
 
 jobs:
   core-ts:
-    name: TypeScript SDK
+    name: TypeScript SDK (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [18.x, 20.x]
+        node-version: [20.x, 22.x]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -26,13 +26,13 @@ jobs:
         working-directory: packages/core-ts
       - run: npm run lint
         working-directory: packages/core-ts
-      - run: npm test
+      - run: npm test -- --coverage
         working-directory: packages/core-ts
       - run: npm run build
         working-directory: packages/core-ts
 
   core-py:
-    name: Python SDK
+    name: Python SDK (${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -46,5 +46,9 @@ jobs:
         working-directory: packages/core-py
       - run: ruff check .
         working-directory: packages/core-py
-      - run: pytest
+      - run: mypy src
+        working-directory: packages/core-py
+      - run: pytest --tb=short --cov=privacylens --cov-report=term-missing --cov-fail-under=80
+        working-directory: packages/core-py
+      - run: hatch build
         working-directory: packages/core-py

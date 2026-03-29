@@ -33,7 +33,7 @@ def normalize_messages(input: Any) -> list[dict[str, Any]]:
 
     if isinstance(input, dict):
         if "messages" in input:
-            return input["messages"]
+            return input["messages"]  # type: ignore[no-any-return]
         raise TypeError(
             f"Unrecognized dict format: expected a dict with a 'messages' key "
             f"(Anthropic-style), but got keys: {list(input.keys())!r}"
