@@ -47,9 +47,13 @@ response = client.messages.create(
     messages=[{"role": "user", "content": "My SSN is 123-45-6789"}],
 )
 
-# Async
+# Async — wrap AsyncAnthropic; use messages.create() (same method name)
 async_client = shield(anthropic.AsyncAnthropic())
-response = await async_client.messages.acreate(...)
+response = await async_client.messages.create(
+    model="claude-3-5-haiku-20241022",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": "My SSN is 123-45-6789"}],
+)
 ```
 
 **What gets masked:** `content` in each message.
@@ -59,17 +63,20 @@ response = await async_client.messages.acreate(...)
 
 ### LangChain
 
-The LangChain adapter is a `BaseCallbackHandler`. Pass it in the `callbacks` list of any LangChain LLM or chain.
+The LangChain adapter is a `BaseCallbackHandler`. `shield()` detects any `BaseChatModel` instance and returns a handler — pass it in the `callbacks` list of any LangChain LLM or chain.
 
 ```python
 from privacylens import shield
 from langchain_openai import ChatOpenAI
 
-handler = shield(ChatOpenAI())
+llm = ChatOpenAI()
+handler = shield(llm)  # returns a LangChainCallbackHandler
 
-# Use as a callback handler
-llm = ChatOpenAI(callbacks=[handler])
-response = llm.invoke("My name is John Doe, email john@example.com")
+# Pass the handler in callbacks — use your original llm as normal
+response = llm.invoke(
+    "My name is John Doe, email john@example.com",
+    config={"callbacks": [handler]},
+)
 
 # Or pass directly to any chain
 chain = prompt | llm
@@ -83,17 +90,27 @@ response = chain.invoke({"input": "..."}, config={"callbacks": [handler]})
 
 ### CrewAI
 
+`CrewAIAdapter` wraps any callable with the signature `(messages: list[dict], **kwargs) -> str`. Pass your LLM callable to `shield()`:
+
 ```python
 from privacylens import shield
-from crewai import Agent, LLM
 
-llm = shield(LLM(model="gpt-4o-mini"))
+# Any callable that accepts (messages, **kwargs) -> str
+def my_llm(messages, **kwargs):
+    ...
 
-agent = Agent(
-    role="Analyst",
-    goal="Summarize customer data",
-    llm=llm,
-)
+shielded_llm = shield(my_llm)  # Note: shield() auto-detects by isinstance checks;
+                                # for raw callables use CrewAIAdapter directly:
+
+from privacylens.adapters.crewai import CrewAIAdapter
+from privacylens.core.pipeline import Pipeline
+from privacylens.core.config import load_config
+
+pipeline = Pipeline(load_config())
+shielded_llm = CrewAIAdapter(my_llm, pipeline)
+
+from crewai import Agent
+agent = Agent(role="Analyst", goal="Summarize data", llm=shielded_llm)
 ```
 
 ---
@@ -144,7 +161,13 @@ for await (const chunk of stream) {
 
 ```typescript
 import { AzureOpenAI } from "openai";
-const client = shield(new AzureOpenAI({ ... }));
+const client = shield(new AzureOpenAI({ /* ... */ }));
+```
+
+To pass custom config, provide a `Partial<Config>` as the second argument:
+
+```typescript
+const client = shield(new OpenAI(), { vault: "memory" });
 ```
 
 ---
@@ -176,15 +199,27 @@ for await (const chunk of result.textStream) {
 
 ## Auto-detection
 
-`shield()` inspects the client's constructor name and picks the right adapter automatically:
+`shield()` inspects the client type and picks the right adapter automatically.
 
-| Constructor name | Adapter used |
-|-----------------|-------------|
-| `OpenAI`, `AzureOpenAI` | OpenAI adapter |
-| `AsyncOpenAI` | Async OpenAI adapter |
-| `Anthropic` | Anthropic adapter |
-| `AsyncAnthropic` | Async Anthropic adapter |
-| LangChain `BaseChatModel` | LangChain callback handler |
-| Strands `Model` | Strands model wrapper |
+### Python
+
+| Client type | Adapter returned |
+|-------------|-----------------|
+| `openai.OpenAI` | `OpenAIAdapter` (sync) |
+| `openai.AsyncOpenAI` | `OpenAIAdapter` (async) |
+| `anthropic.Anthropic` | `AnthropicAdapter` (sync) |
+| `anthropic.AsyncAnthropic` | `AnthropicAdapter` (async) |
+| `langchain_core.language_models.BaseChatModel` | `LangChainCallbackHandler` |
+| `strands.models.Model` | `StrandsModelWrapper` |
+
+For CrewAI, use `CrewAIAdapter` directly (see above) — `shield()` does not auto-detect raw callables.
+
+### TypeScript
+
+| Constructor name | Adapter returned |
+|-----------------|-----------------|
+| `OpenAI` | OpenAI proxy |
+| `AzureOpenAI` | OpenAI proxy |
+| `AsyncOpenAI` | OpenAI proxy (async) |
 
 If the client type is not recognised, `shield()` raises a `TypeError` listing the supported types.

@@ -82,46 +82,70 @@ export class NINODetector {
 
 ### Python — pass via the Analyzer
 
+Build a `Pipeline` with your detector included by passing a config that registers it, or construct the `Analyzer` directly:
+
 ```python
 from privacylens.core.analyzer import Analyzer
+from privacylens.core.pipeline import Pipeline, _build_detectors
+from privacylens.core.config import load_config
+
+config = load_config()
+detectors = _build_detectors(config) + [NINODetector()]
+# Build a pipeline manually with the extended detector list
+pipeline = Pipeline.__new__(Pipeline)
+pipeline._config = config
+from privacylens.core.vault import _build_vault
+pipeline._vault = _build_vault(config)
+pipeline._analyzer = Analyzer(detectors, config)
+```
+
+Or register it on an existing analyzer after construction:
+
+```python
 from privacylens.core.pipeline import Pipeline
 from privacylens.core.config import load_config
 
-analyzer = Analyzer([NINODetector()], load_config())
+pipeline = Pipeline(load_config())
+pipeline._analyzer.register_detector("nino", NINODetector())
 ```
 
-Or register it on an existing analyzer:
-
-```python
-analyzer.register_detector("nino", NINODetector())
-```
-
-To use it with `shield()`, build a custom pipeline and pass it to the adapter directly:
+Then pass the pipeline directly to the adapter:
 
 ```python
 from privacylens.adapters.openai import OpenAIAdapter
-from privacylens.core.pipeline import Pipeline
-from privacylens.core.config import load_config
 import openai
 
-pipeline = Pipeline(load_config(), extra_detectors=[NINODetector()])
 client = OpenAIAdapter(openai.OpenAI(), pipeline)
 ```
 
-> **Note:** A cleaner `shield(client, detectors=[...])` API is planned — see [issue #8](https://github.com/Madan2248c/privacylens/issues).
+> **Note:** A cleaner public API for injecting custom detectors is planned — see [issue #8](https://github.com/Madan2248c/privacylens/issues).
 
 ### TypeScript
 
+In the TypeScript SDK, build a `Pipeline` with a custom config that includes your pattern (for regex-based detectors), or use `shieldOpenAI` directly with a pre-built pipeline. The `Analyzer` is not publicly accessible on `Pipeline`, so the cleanest approach is to construct the pipeline components manually:
+
 ```typescript
 import { Pipeline, loadConfig } from "privacylens";
-import { shieldOpenAI } from "privacylens"; // internal export
+import { Analyzer } from "privacylens/core/analyzer"; // internal import
+import { shieldOpenAI } from "privacylens/adapters/openai"; // internal import
 import OpenAI from "openai";
 
-// Build a pipeline with your custom detector registered
-const pipeline = new Pipeline(loadConfig());
-pipeline.analyzer.registerDetector("nino", new NINODetector());
+// Build analyzer with your custom detector
+const config = loadConfig();
+const analyzer = new Analyzer([new NINODetector()], config);
 
-const client = shieldOpenAI(new OpenAI(), pipeline);
+// Note: Pipeline constructor only accepts Config — for full custom detector
+// support, use the Python SDK or wait for the public detector injection API.
+// For regex-based custom patterns, use loadConfig overrides instead:
+const client = shieldOpenAI(new OpenAI(), new Pipeline(loadConfig({
+  overrides: {
+    detectors: {
+      regex: {
+        patterns: [{ entityType: "NINO", pattern: "[A-Z]{2}\\s?\\d{2}\\s?\\d{2}\\s?\\d{2}\\s?[A-D]" }]
+      }
+    }
+  }
+})));
 ```
 
 ---

@@ -95,26 +95,27 @@ redis_url: redis://localhost:6379  # optional, default shown
 from privacylens import shield
 import openai
 
-# Pass a file path
+# Pass a config file path
 client = shield(openai.OpenAI(), config="path/to/privacylens.yaml")
 
-# Pass options directly (highest priority)
+# Pass options directly as kwargs (highest priority)
 client = shield(openai.OpenAI(), vault="sqlite", detectors={"regex": {"enabled": True}})
 ```
 
 ### TypeScript
 
+`shield()` accepts a `Partial<Config>` as its second argument:
+
 ```typescript
 import { shield, loadConfig } from "privacylens";
 import OpenAI from "openai";
 
-// Pass a config file path
-const client = shield(new OpenAI(), loadConfig({ configPath: "privacylens.yaml" }));
+// Pass config options directly
+const client = shield(new OpenAI(), { vault: "memory" });
 
-// Pass overrides directly
-const client = shield(new OpenAI(), loadConfig({
-  overrides: { vault: "memory" }
-}));
+// Or load from a file first, then pass the result
+const cfg = loadConfig({ configPath: "privacylens.yaml" });
+const client2 = shield(new OpenAI(), cfg);
 ```
 
 ---
