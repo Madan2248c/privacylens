@@ -46,6 +46,9 @@ extra:
     - icon: fontawesome/brands/npm
       link: https://www.npmjs.com/package/privacylens
 
+extra_css:
+  - stylesheets/extra.css
+
 extra_javascript:
   - js/ai-copy.js
 
