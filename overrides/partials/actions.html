@@ -1,0 +1,9 @@
+{#- Replace the edit/view buttons with a "Copy for AI" button that copies this page's markdown -#}
+<button
+  class="md-content__button md-icon ai-copy-page"
+  title="Copy this page for AI"
+  data-src-path="{{ page.file.src_path }}"
+  aria-label="Copy this page for AI"
+>
+  {% include ".icons/material/content-copy.svg" %}
+</button>

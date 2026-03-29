@@ -172,11 +172,11 @@ Contributions are welcome! Please read [CONTRIBUTING.md](./CONTRIBUTING.md) firs
 
 ## Documentation
 
-- [Getting Started](./docs/getting-started.md)
-- [Configuration](./docs/configuration.md)
-- [Detectors](./docs/detectors.md)
-- [Adapters](./docs/adapters.md)
-- [Writing a Custom Detector](./docs/writing-a-custom-detector.md)
+- [Getting Started](./getting-started.md)
+- [Configuration](./configuration.md)
+- [Detectors](./detectors.md)
+- [Adapters](./adapters.md)
+- [Writing a Custom Detector](./writing-a-custom-detector.md)
 
 ## Releases
 

@@ -1,59 +1,79 @@
-// Inject a "Copy docs for AI" button into every page.
-// Clicking it fetches llms-full.txt and copies it to the clipboard.
+// PrivacyLens AI copy buttons
+// 1. Per-page "Copy for AI" button (replaces edit button) — copies current page markdown
+// 2. "Copy all docs" button injected into the header nav — copies llms-full.txt
 
-document.addEventListener("DOMContentLoaded", () => {
+const RAW_BASE = "https://raw.githubusercontent.com/Madan2248c/privacylens/main/docs/";
+const SITE_BASE = "https://madan2248c.github.io/privacylens/";
+
+async function fetchAndCopy(url, btn, successText) {
+  const span = btn.querySelector("span") || btn;
+  const original = span.textContent;
+  try {
+    const text = await fetch(url).then((r) => {
+      if (!r.ok) throw new Error(r.status);
+      return r.text();
+    });
+    await navigator.clipboard.writeText(text);
+    span.textContent = "Copied!";
+    setTimeout(() => (span.textContent = original), 2000);
+  } catch {
+    window.open(url, "_blank");
+  }
+}
+
+function initPageCopyButton() {
+  const btn = document.querySelector(".ai-copy-page");
+  if (!btn) return;
+
+  const srcPath = btn.getAttribute("data-src-path");
+  if (!srcPath) return;
+
+  btn.addEventListener("click", () => {
+    fetchAndCopy(RAW_BASE + srcPath, btn, "Copied!");
+  });
+}
+
+function initAllDocsCopyButton() {
+  // Inject into the header actions area (right side of top nav)
+  const headerInner = document.querySelector(".md-header__inner");
+  if (!headerInner || document.getElementById("ai-copy-all-btn")) return;
+
   const btn = document.createElement("button");
-  btn.id = "ai-copy-btn";
-  btn.title = "Copy full docs to clipboard for use with AI assistants";
+  btn.id = "ai-copy-all-btn";
+  btn.title = "Copy full docs for AI (llms-full.txt)";
   btn.innerHTML = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+      <path d="M19 21H8V7h11m0-2H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2m-3-4H4a2 2 0 0 0-2 2v14h2V3h12V1Z"/>
     </svg>
-    <span>Copy docs for AI</span>
+    <span>Copy all docs for AI</span>
   `;
 
   Object.assign(btn.style, {
-    position: "fixed",
-    bottom: "1.5rem",
-    right: "1.5rem",
-    zIndex: "999",
     display: "flex",
     alignItems: "center",
-    gap: "0.4rem",
-    padding: "0.5rem 0.9rem",
-    borderRadius: "2rem",
-    border: "none",
-    background: "var(--md-primary-fg-color)",
+    gap: "0.35rem",
+    padding: "0 0.8rem",
+    height: "2.4rem",
+    borderRadius: "1.2rem",
+    border: "1px solid rgba(255,255,255,0.3)",
+    background: "transparent",
     color: "var(--md-primary-bg-color)",
-    fontSize: "0.8rem",
+    fontSize: "0.75rem",
     fontWeight: "600",
     cursor: "pointer",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
-    transition: "opacity 0.2s",
+    whiteSpace: "nowrap",
+    marginLeft: "0.5rem",
   });
 
-  btn.addEventListener("mouseenter", () => (btn.style.opacity = "0.85"));
-  btn.addEventListener("mouseleave", () => (btn.style.opacity = "1"));
-
-  btn.addEventListener("click", async () => {
-    const base = document.querySelector('meta[name="site-url"]')?.getAttribute("content")
-      ?? window.location.origin + window.location.pathname.replace(/\/[^/]*$/, "/");
-    const url = new URL("llms-full.txt", base).href;
-
-    try {
-      const text = await fetch(url).then((r) => r.text());
-      await navigator.clipboard.writeText(text);
-      const span = btn.querySelector("span");
-      if (span) {
-        span.textContent = "Copied!";
-        setTimeout(() => (span.textContent = "Copy docs for AI"), 2000);
-      }
-    } catch {
-      window.open(url, "_blank");
-    }
+  btn.addEventListener("click", () => {
+    fetchAndCopy(SITE_BASE + "llms-full.txt", btn, "Copied!");
   });
 
-  document.body.appendChild(btn);
+  headerInner.appendChild(btn);
+}
+
+// MkDocs Material uses instant navigation — re-init on every page load
+document$.subscribe(() => {
+  initPageCopyButton();
+  initAllDocsCopyButton();
 });
