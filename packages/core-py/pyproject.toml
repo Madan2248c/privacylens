@@ -43,6 +43,8 @@ dev = [
     "hypothesis>=6.0",
     "ruff>=0.4",
     "mypy>=1.0",
+    "types-PyYAML",
+    "types-jsonschema",
     "pyyaml>=6.0",
     "jsonschema>=4.0",
     "respx>=0.20",
@@ -66,7 +68,11 @@ python_version = "3.10"
 exclude = ["src/privacylens/detectors/pii.py", "src/privacylens/detectors/semantic.py"]
 
 [[tool.mypy.overrides]]
-module = ["redis", "gliner", "presidio_analyzer", "presidio_anonymizer", "strands", "strands.models"]
+module = ["privacylens.adapters.strands", "privacylens.adapters.langchain", "privacylens.adapters.crewai"]
+warn_unused_ignores = false
+
+[[tool.mypy.overrides]]
+module = ["redis", "gliner", "presidio_analyzer", "presidio_anonymizer", "strands", "strands.models", "langchain_core", "langchain_core.callbacks", "langchain_core.language_models"]
 ignore_missing_imports = true
 
 [tool.ruff]

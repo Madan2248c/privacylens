@@ -32,7 +32,7 @@ def _new_session_id() -> str:
     return str(uuid.uuid4())
 
 
-class StrandsModelWrapper(_StrandsModel):
+class StrandsModelWrapper(_StrandsModel):  # type: ignore[misc]
     """Wraps a Strands ``Model`` with PII masking.
 
     Tokenizes PII in input messages before delegating to the underlying

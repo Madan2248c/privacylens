@@ -73,7 +73,7 @@ def _validate_schema(config: dict[str, Any]) -> None:
     Raises ValueError with a descriptive message on schema violations.
     """
     try:
-        import jsonschema  # type: ignore[import-untyped]
+        import jsonschema
     except ImportError:
         return  # validation is best-effort when jsonschema is absent
 
@@ -153,4 +153,4 @@ def dump_config(config: Config) -> str:
         for k, v in config.items()
         if k != "on_detection" and v is not None
     }
-    return yaml.dump(serialisable, default_flow_style=False, sort_keys=True)
+    return str(yaml.dump(serialisable, default_flow_style=False, sort_keys=True))
