@@ -1,0 +1,753 @@
+# PrivacyLens — Full Documentation
+
+Source: https://madan2248c.github.io/privacylens/
+GitHub: https://github.com/Madan2248c/privacylens
+
+---
+
+# Getting Started
+
+PrivacyLens wraps your LLM client with one line of code. PII is masked before every request and restored in every response — your app code stays unchanged.
+
+## Prerequisites
+
+- **Python SDK**: Python 3.10+
+- **TypeScript SDK**: Node.js 20+
+
+## Install
+
+```bash
+# Python
+pip install privacylens
+
+# TypeScript
+npm install privacylens
+```
+
+## Your first shielded client
+
+### Python
+
+```python
+from privacylens import shield
+import openai
+
+client = shield(openai.OpenAI())
+
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "My email is john@example.com"}],
+)
+print(response.choices[0].message.content)  # john@example.com is restored
+```
+
+### TypeScript
+
+```typescript
+import OpenAI from "openai";
+import { shield } from "privacylens";
+
+const client = shield(new OpenAI());
+
+const response = await client.chat.completions.create({
+  model: "gpt-4o-mini",
+  messages: [{ role: "user", content: "My email is john@example.com" }],
+});
+console.log(response.choices[0].message.content); // john@example.com is restored
+```
+
+That's it. No other changes needed.
+
+## Preview what gets masked
+
+Use `inspect()` to see what PrivacyLens would mask without actually masking it — useful for testing and debugging.
+
+### Python
+
+```python
+from privacylens import inspect
+
+spans = inspect("Call me at 555-123-4567 or email john@example.com")
+for span in spans:
+    print(f"{span.entity_type}: '{span.value}'")
+# PHONE: '555-123-4567'
+# EMAIL: 'john@example.com'
+```
+
+### TypeScript
+
+```typescript
+import { inspect } from "privacylens";
+
+const spans = inspect("Call me at 555-123-4567 or email john@example.com");
+spans.forEach(s => console.log(`${s.entityType}: '${s.value}'`));
+// PHONE: '555-123-4567'
+// EMAIL: 'john@example.com'
+```
+
+## What happens under the hood
+
+```
+Your prompt  →  Analyzer  →  Tokenizer  →  Vault  →  LLM API
+"john@..."       detects       replaces      stores    "[EMAIL_1]"
+                 EMAIL         with token    mapping
+
+LLM response  →  Detokenizer  →  Your app
+"[EMAIL_1]"       restores        "john@..."
+```
+
+1. **Analyze** — detectors scan the prompt for PII
+2. **Tokenize** — each PII value is replaced with `[ENTITY_TYPE_N]`
+3. **Store** — the token↔value mapping is saved in a session vault
+4. **Send** — the sanitized prompt goes to the LLM
+5. **Detokenize** — tokens in the response are replaced with original values
+
+## Next steps
+
+- [Configuration](./configuration.md) — customize detectors, vault, and patterns
+- [Detectors](./detectors.md) — add Presidio or GLiNER for 50+ entity types
+- [Adapters](./adapters.md) — full list of supported LLM clients
+
+---
+
+# Configuration
+
+PrivacyLens is zero-config by default. Drop a `privacylens.yaml` in your project root to customize it.
+
+## Config file
+
+```yaml
+# privacylens.yaml
+version: "1"
+
+detectors:
+  regex:
+    enabled: true
+    patterns:
+      - entity_type: EMPLOYEE_ID
+        pattern: 'EMP-\d{4,}'
+      - entity_type: PROJECT_CODE
+        pattern: 'PROJ-[A-Z]{2,4}-\d{3,}'
+
+vault: memory  # "memory" | "sqlite" | "redis"
+```
+
+PrivacyLens looks for `privacylens.yaml` in the **current working directory** when your app starts.
+
+## Priority order
+
+Settings are merged from lowest to highest priority:
+
+| Priority | Source |
+|----------|--------|
+| 4 (lowest) | Built-in defaults |
+| 3 | `privacylens.yaml` in cwd |
+| 2 | Explicit file path passed to `shield()` |
+| 1 (highest) | Keyword arguments passed directly |
+
+## All options
+
+### `version`
+
+Schema version. Currently always `"1"`.
+
+```yaml
+version: "1"
+```
+
+---
+
+### `detectors`
+
+Controls which detectors are active and their settings.
+
+```yaml
+detectors:
+  regex:
+    enabled: true          # set false to disable built-in regex
+    patterns:              # additional custom patterns (additive)
+      - entity_type: MY_ID
+        pattern: 'ID-\d{6}'
+  pii:
+    enabled: true          # requires: pip install privacylens[pii]
+  semantic:
+    enabled: true          # requires: pip install privacylens[semantic]
+```
+
+Custom `patterns` are **additive** — they extend the built-in EMAIL, PHONE, SSN patterns rather than replacing them.
+
+---
+
+### `vault`
+
+Where token↔value mappings are stored within a session.
+
+| Value | Description |
+|-------|-------------|
+| `memory` | In-process dict. Default. Lost when process exits. |
+| `sqlite` | Persisted to a local SQLite file. |
+| `redis` | Stored in Redis. Requires `pip install privacylens[redis]`. |
+
+```yaml
+vault: sqlite
+sqlite_path: /tmp/privacylens.db   # optional, default: privacylens.db
+
+# or
+vault: redis
+redis_url: redis://localhost:6379  # optional, default shown
+```
+
+---
+
+## Passing config in code
+
+### Python
+
+```python
+from privacylens import shield
+import openai
+
+# Pass a file path
+client = shield(openai.OpenAI(), config="path/to/privacylens.yaml")
+
+# Pass options directly (highest priority)
+client = shield(openai.OpenAI(), vault="sqlite", detectors={"regex": {"enabled": True}})
+```
+
+### TypeScript
+
+```typescript
+import { shield, loadConfig } from "privacylens";
+import OpenAI from "openai";
+
+// Pass a config file path
+const client = shield(new OpenAI(), loadConfig({ configPath: "privacylens.yaml" }));
+
+// Pass overrides directly
+const client = shield(new OpenAI(), loadConfig({
+  overrides: { vault: "memory" }
+}));
+```
+
+---
+
+## on_detection callback (Python only)
+
+Get notified when PII is detected — useful for logging entity types (never log values).
+
+```python
+def on_detection(entity_type: str) -> None:
+    print(f"Masked: {entity_type}")  # e.g. "Masked: EMAIL"
+
+client = shield(openai.OpenAI(), on_detection=on_detection)
+```
+
+> **Never log the actual PII value** — only the entity type is passed to the callback.
+
+---
+
+## JSON Schema
+
+The config file is validated against [`privacylens.schema.json`](../privacylens.schema.json) at load time. Invalid configs raise a `ValueError` with a descriptive message.
+
+---
+
+# Detectors
+
+Detectors scan text for PII and return a list of `EntitySpan` objects. PrivacyLens ships with three detectors — one built-in and two optional.
+
+## Built-in: Regex detector
+
+Zero dependencies. Always available. Covers the most common PII types.
+
+| Entity | Example input | Token |
+|--------|--------------|-------|
+| `EMAIL` | `john@example.com` | `[EMAIL_1]` |
+| `PHONE` | `555-123-4567`, `(415) 555-0198`, `+14155550198` | `[PHONE_1]` |
+| `SSN` | `123-45-6789` | `[SSN_1]` |
+
+The regex detector is enabled by default — no config needed.
+
+### Adding custom patterns
+
+```yaml
+# privacylens.yaml
+detectors:
+  regex:
+    patterns:
+      - entity_type: EMPLOYEE_ID
+        pattern: 'EMP-\d{4,}'
+      - entity_type: CREDIT_CARD
+        pattern: '\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b'
+```
+
+Custom patterns are **additive** — EMAIL, PHONE, and SSN are still detected.
+
+---
+
+## Optional: Presidio (50+ entity types)
+
+[Microsoft Presidio](https://microsoft.github.io/presidio/) provides ML-backed detection for names, addresses, credit cards, passport numbers, and 50+ more entity types.
+
+### Install
+
+```bash
+pip install "privacylens[pii]"
+```
+
+### Enable
+
+```yaml
+# privacylens.yaml
+detectors:
+  pii:
+    enabled: true
+```
+
+### Detected entities (sample)
+
+`PERSON`, `EMAIL_ADDRESS`, `PHONE_NUMBER`, `CREDIT_CARD`, `US_SSN`, `US_PASSPORT`, `IBAN_CODE`, `IP_ADDRESS`, `LOCATION`, `DATE_TIME`, `NRP`, `MEDICAL_LICENSE`, and more.
+
+> Presidio uses spaCy under the hood. The first run downloads a language model (~50 MB).
+
+---
+
+## Optional: GLiNER (semantic / ML-based)
+
+[GLiNER](https://github.com/urchade/GLiNER) is a lightweight NER model that detects entities by semantic meaning rather than pattern matching. Useful for names and addresses that regex can't reliably catch.
+
+### Install
+
+```bash
+pip install "privacylens[semantic]"
+```
+
+### Enable
+
+```yaml
+# privacylens.yaml
+detectors:
+  semantic:
+    enabled: true
+```
+
+### Default labels detected
+
+`person`, `email`, `phone`, `address`, `organization`
+
+> The GLiNER model (`urchade/gliner_medium-v2.1`, ~300 MB) is downloaded from HuggingFace on first use.
+
+---
+
+## Using multiple detectors together
+
+Detectors can be combined. PrivacyLens merges their results and resolves overlapping spans by keeping the longest match.
+
+```yaml
+detectors:
+  regex:
+    enabled: true
+    patterns:
+      - entity_type: EMPLOYEE_ID
+        pattern: 'EMP-\d{4,}'
+  pii:
+    enabled: true
+```
+
+---
+
+## Writing a custom detector
+
+See [Writing a Custom Detector](./writing-a-custom-detector.md).
+
+---
+
+## TypeScript
+
+The TypeScript SDK currently ships the regex detector only. Presidio and GLiNER are Python-only.
+
+```typescript
+import { inspect } from "privacylens";
+
+// Uses regex detector by default
+const spans = inspect("SSN: 123-45-6789");
+```
+
+Custom patterns work the same way via `privacylens.yaml` or `loadConfig`:
+
+```typescript
+import { loadConfig, shield } from "privacylens";
+import OpenAI from "openai";
+
+const client = shield(new OpenAI(), loadConfig({
+  overrides: {
+    detectors: {
+      regex: {
+        patterns: [{ entityType: "EMPLOYEE_ID", pattern: "EMP-\\d{4,}" }]
+      }
+    }
+  }
+}));
+```
+
+---
+
+# Adapters
+
+Adapters wrap LLM clients so PII masking happens transparently. Pass your client to `shield()` and use it exactly as before.
+
+## Python adapters
+
+### OpenAI
+
+```python
+from privacylens import shield
+import openai
+
+client = shield(openai.OpenAI())
+
+# Sync
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "My email is john@example.com"}],
+)
+
+# Async
+async_client = shield(openai.AsyncOpenAI())
+response = await async_client.chat.completions.create(...)
+
+# Streaming
+stream = client.chat.completions.create(..., stream=True)
+for chunk in stream:
+    print(chunk.choices[0].delta.content, end="")
+```
+
+**What gets masked:** all `content` fields in `messages[]`.
+**What gets restored:** `choices[].message.content` and streaming `delta.content`.
+
+---
+
+### Anthropic
+
+```python
+from privacylens import shield
+import anthropic
+
+client = shield(anthropic.Anthropic())
+
+response = client.messages.create(
+    model="claude-3-5-haiku-20241022",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": "My SSN is 123-45-6789"}],
+)
+
+# Async
+async_client = shield(anthropic.AsyncAnthropic())
+response = await async_client.messages.acreate(...)
+```
+
+**What gets masked:** `content` in each message.
+**What gets restored:** `content[].text` blocks in the response.
+
+---
+
+### LangChain
+
+The LangChain adapter is a `BaseCallbackHandler`. Pass it in the `callbacks` list of any LangChain LLM or chain.
+
+```python
+from privacylens import shield
+from langchain_openai import ChatOpenAI
+
+handler = shield(ChatOpenAI())
+
+# Use as a callback handler
+llm = ChatOpenAI(callbacks=[handler])
+response = llm.invoke("My name is John Doe, email john@example.com")
+
+# Or pass directly to any chain
+chain = prompt | llm
+response = chain.invoke({"input": "..."}, config={"callbacks": [handler]})
+```
+
+**What gets masked:** prompts passed to `on_llm_start`.
+**What gets restored:** generated text in `on_llm_end`.
+
+---
+
+### CrewAI
+
+```python
+from privacylens import shield
+from crewai import Agent, LLM
+
+llm = shield(LLM(model="gpt-4o-mini"))
+
+agent = Agent(
+    role="Analyst",
+    goal="Summarize customer data",
+    llm=llm,
+)
+```
+
+---
+
+### Amazon Strands
+
+```python
+from privacylens import shield
+from strands import Agent
+from strands.models import BedrockModel
+
+model = shield(BedrockModel(model_id="anthropic.claude-3-5-haiku-20241022-v1:0"))
+
+agent = Agent(model=model)
+response = agent("Summarize the ticket for john@example.com")
+```
+
+---
+
+## TypeScript adapters
+
+### OpenAI
+
+```typescript
+import OpenAI from "openai";
+import { shield } from "privacylens";
+
+const client = shield(new OpenAI());
+
+// Non-streaming
+const response = await client.chat.completions.create({
+  model: "gpt-4o-mini",
+  messages: [{ role: "user", content: "My email is john@example.com" }],
+});
+
+// Streaming
+const stream = await client.chat.completions.create({
+  model: "gpt-4o-mini",
+  stream: true,
+  messages: [{ role: "user", content: "My phone is 555-123-4567" }],
+});
+for await (const chunk of stream) {
+  process.stdout.write(chunk.choices[0]?.delta?.content ?? "");
+}
+```
+
+`shield()` also works with `AzureOpenAI`:
+
+```typescript
+import { AzureOpenAI } from "openai";
+const client = shield(new AzureOpenAI({ ... }));
+```
+
+---
+
+### Vercel AI SDK
+
+```typescript
+import { openai } from "@ai-sdk/openai";
+import { generateText, streamText } from "ai";
+import { shield } from "privacylens";
+
+// generateText
+const { text } = await generateText({
+  model: shield(openai("gpt-4o-mini")),
+  prompt: "Summarise the contract for john@example.com",
+});
+
+// streamText
+const result = await streamText({
+  model: shield(openai("gpt-4o-mini")),
+  prompt: "Draft a reply to sarah@corp.io",
+});
+for await (const chunk of result.textStream) {
+  process.stdout.write(chunk);
+}
+```
+
+---
+
+## Auto-detection
+
+`shield()` inspects the client's constructor name and picks the right adapter automatically:
+
+| Constructor name | Adapter used |
+|-----------------|-------------|
+| `OpenAI`, `AzureOpenAI` | OpenAI adapter |
+| `AsyncOpenAI` | Async OpenAI adapter |
+| `Anthropic` | Anthropic adapter |
+| `AsyncAnthropic` | Async Anthropic adapter |
+| LangChain `BaseChatModel` | LangChain callback handler |
+| Strands `Model` | Strands model wrapper |
+
+If the client type is not recognised, `shield()` raises a `TypeError` listing the supported types.
+
+---
+
+# Writing a Custom Detector
+
+A detector is any class with a single `detect(text)` method. You can add one to PrivacyLens without touching the core library.
+
+## The Detector protocol
+
+### Python
+
+```python
+from privacylens.core.models import EntitySpan
+
+class MyDetector:
+    def detect(self, text: str) -> list[EntitySpan]:
+        ...
+```
+
+That's the entire interface. No base class to inherit, no registration decorator.
+
+### TypeScript
+
+```typescript
+import type { EntitySpan } from "privacylens";
+
+interface Detector {
+  detect(text: string): EntitySpan[];
+}
+```
+
+---
+
+## Step-by-step example: detecting UK National Insurance numbers
+
+### Python
+
+```python
+import re
+from privacylens.core.models import EntitySpan
+
+class NINODetector:
+    """Detects UK National Insurance numbers (e.g. AB 12 34 56 C)."""
+
+    _RE = re.compile(
+        r"\b[A-CEGHJ-PR-TW-Z]{2}\s?\d{2}\s?\d{2}\s?\d{2}\s?[A-D]\b",
+        re.IGNORECASE,
+    )
+
+    def detect(self, text: str) -> list[EntitySpan]:
+        return [
+            EntitySpan(
+                start=m.start(),
+                end=m.end(),
+                entity_type="NINO",
+                value=m.group(),
+            )
+            for m in self._RE.finditer(text)
+        ]
+```
+
+### TypeScript
+
+```typescript
+import { createEntitySpan, type EntitySpan } from "privacylens";
+
+export class NINODetector {
+  private readonly re = /\b[A-CEGHJ-PR-TW-Z]{2}\s?\d{2}\s?\d{2}\s?\d{2}\s?[A-D]\b/gi;
+
+  detect(text: string): EntitySpan[] {
+    const spans: EntitySpan[] = [];
+    this.re.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = this.re.exec(text)) !== null) {
+      spans.push(createEntitySpan(match.index, match.index + match[0].length, "NINO", match[0]));
+    }
+    return spans;
+  }
+}
+```
+
+---
+
+## Registering your detector
+
+### Python — pass via the Analyzer
+
+```python
+from privacylens.core.analyzer import Analyzer
+from privacylens.core.pipeline import Pipeline
+from privacylens.core.config import load_config
+
+analyzer = Analyzer([NINODetector()], load_config())
+```
+
+Or register it on an existing analyzer:
+
+```python
+analyzer.register_detector("nino", NINODetector())
+```
+
+To use it with `shield()`, build a custom pipeline and pass it to the adapter directly:
+
+```python
+from privacylens.adapters.openai import OpenAIAdapter
+from privacylens.core.pipeline import Pipeline
+from privacylens.core.config import load_config
+import openai
+
+pipeline = Pipeline(load_config(), extra_detectors=[NINODetector()])
+client = OpenAIAdapter(openai.OpenAI(), pipeline)
+```
+
+> **Note:** A cleaner `shield(client, detectors=[...])` API is planned — see [issue #8](https://github.com/Madan2248c/privacylens/issues).
+
+### TypeScript
+
+```typescript
+import { Pipeline, loadConfig } from "privacylens";
+import { shieldOpenAI } from "privacylens"; // internal export
+import OpenAI from "openai";
+
+// Build a pipeline with your custom detector registered
+const pipeline = new Pipeline(loadConfig());
+pipeline.analyzer.registerDetector("nino", new NINODetector());
+
+const client = shieldOpenAI(new OpenAI(), pipeline);
+```
+
+---
+
+## Tips
+
+**Keep `detect()` pure** — no side effects, no I/O. It may be called many times per request.
+
+**Return non-overlapping spans** — if your detector can produce overlapping matches, PrivacyLens will resolve them by keeping the longest span, but it's cleaner to avoid them.
+
+**Use `entity_type` in SCREAMING_SNAKE_CASE** — e.g. `NINO`, `EMPLOYEE_ID`, `PASSPORT_NUMBER`. This is what appears in the token: `[NINO_1]`.
+
+**Lazy-load heavy dependencies** — if your detector uses an ML model, load it in `__init__` or on first call to `detect()`, not at import time.
+
+```python
+class MyMLDetector:
+    def __init__(self) -> None:
+        try:
+            import my_ml_lib
+        except ImportError:
+            raise ImportError("Install my_ml_lib: pip install my-ml-lib")
+        self._model = my_ml_lib.load()
+
+    def detect(self, text: str) -> list[EntitySpan]:
+        ...
+```
+
+---
+
+## Testing your detector
+
+```python
+def test_nino_detected():
+    detector = NINODetector()
+    spans = detector.detect("My NI number is AB 12 34 56 C.")
+    assert len(spans) == 1
+    assert spans[0].entity_type == "NINO"
+    assert spans[0].value == "AB 12 34 56 C"
+```
+
+---
+

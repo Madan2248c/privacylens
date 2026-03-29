@@ -38,6 +38,21 @@ markdown_extensions:
   - toc:
       permalink: true
 
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/Madan2248c/privacylens
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/privacylens/
+    - icon: fontawesome/brands/npm
+      link: https://www.npmjs.com/package/privacylens
+
+extra_javascript:
+  - js/ai-copy.js
+
+hooks:
+  - docs/hooks.py
+
 nav:
   - Home: index.md
   - Getting Started: getting-started.md

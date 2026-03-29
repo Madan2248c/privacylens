@@ -1,0 +1,20 @@
+# PrivacyLens
+
+> Transparent PII masking for LLM clients — keep sensitive data out of your AI prompts.
+
+PrivacyLens wraps any LLM client with one line of code. PII (emails, phone numbers, SSNs, and custom patterns) is detected and replaced with anonymous tokens before the prompt leaves your app, then original values are restored in the response.
+
+- Python SDK: `pip install privacylens`
+- TypeScript SDK: `npm install privacylens`
+- GitHub: https://github.com/Madan2248c/privacylens
+- PyPI: https://pypi.org/project/privacylens/
+- npm: https://www.npmjs.com/package/privacylens
+
+## Docs
+
+- Getting Started: https://madan2248c.github.io/privacylens/getting-started/
+- Configuration: https://madan2248c.github.io/privacylens/configuration/
+- Detectors: https://madan2248c.github.io/privacylens/detectors/
+- Adapters: https://madan2248c.github.io/privacylens/adapters/
+- Writing a Custom Detector: https://madan2248c.github.io/privacylens/writing-a-custom-detector/
+- Full docs for AI: https://madan2248c.github.io/privacylens/llms-full.txt
