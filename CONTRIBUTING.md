@@ -7,7 +7,7 @@ Thanks for your interest in contributing to PrivacyLens.
 - Python 3.10+
 - Node.js 20+
 - Git
-- macOS or Linux shell environment
+- macOS or Linux shell environment (Windows contributors can use WSL2)
 
 ## Local setup
 
@@ -80,7 +80,7 @@ npm run typecheck
 
 ## Coding conventions
 
-Use the conventions documented in `.kiro/steering/tech.md` when available. In this repository, follow the enforced standards:
+This repository does not currently include `.kiro/steering/tech.md` in source control, so follow the enforced standards below:
 
 - **Python**: format and lint with `ruff`; keep `mypy` strict checks passing
 - **TypeScript**: keep `eslint` and strict TypeScript (`tsc --noEmit`) passing; avoid `any` unless justified
