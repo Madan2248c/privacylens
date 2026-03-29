@@ -112,7 +112,7 @@ class StrandsModelWrapper(_StrandsModel):
         prompt: Any,
         system_prompt: str | None = None,
         **kwargs: Any,
-    ) -> "AsyncGenerator[dict[str, Any], None]":
+    ) -> AsyncGenerator[dict[str, Any], None]:
         """Delegate structured output to the wrapped model."""
         return self._model.structured_output(  # type: ignore[no-any-return]
             output_model, prompt, system_prompt, **kwargs
@@ -127,7 +127,7 @@ class StrandsModelWrapper(_StrandsModel):
         tool_choice: Any = None,
         system_prompt_content: list[Any] | None = None,
         **kwargs: Any,
-    ) -> "AsyncIterable[Any]":
+    ) -> AsyncIterable[Any]:
         """Delegate streaming to the wrapped model."""
         return self._model.stream(  # type: ignore[no-any-return]
             messages,
