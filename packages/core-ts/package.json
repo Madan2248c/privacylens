@@ -1,6 +1,6 @@
 {
   "name": "privacylens",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Transparent PII masking for LLM clients",
   "license": "MIT",
   "type": "module",
