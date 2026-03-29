@@ -80,7 +80,10 @@ function toConfig(raw: Record<string, unknown>): Config {
           enabled: typeof raw_det["enabled"] === "boolean" ? raw_det["enabled"] : true,
         };
         if (Array.isArray(raw_det["patterns"])) {
-          detCfg.patterns = raw_det["patterns"] as NonNullable<DetectorConfig["patterns"]>;
+          detCfg.patterns = (raw_det["patterns"] as Record<string, unknown>[]).map((p) => ({
+            entityType: (p["entityType"] ?? p["entity_type"]) as string,
+            pattern: p["pattern"] as string,
+          }));
         }
         detectors[name] = detCfg;
       }

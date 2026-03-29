@@ -4,6 +4,7 @@
 
 [![CI](https://github.com/Madan2248c/privacylens/actions/workflows/ci.yml/badge.svg)](https://github.com/Madan2248c/privacylens/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/privacylens)](https://pypi.org/project/privacylens/)
+[![npm](https://img.shields.io/npm/v/privacylens)](https://www.npmjs.com/package/privacylens)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
 ## The Problem
@@ -50,6 +51,15 @@ handler = shield(my_langchain_model)          # LangChain
 client = shield(my_crewai_agent)              # CrewAI
 ```
 
+Use `inspect()` to preview what would be masked without actually masking it — handy for testing:
+
+```python
+from privacylens import inspect
+
+results = inspect("Call me at 555-123-4567 or email john@example.com")
+# [EntitySpan(type='PHONE', value='555-123-4567', ...), EntitySpan(type='EMAIL', value='john@example.com', ...)]
+```
+
 ### TypeScript — drop-in OpenAI wrapper
 
 ```typescript
@@ -62,6 +72,18 @@ const client = shieldOpenAI(new OpenAI());
 const response = await client.chat.completions.create({
   model: "gpt-4o",
   messages: [{ role: "user", content: "Contact john@example.com about the project" }],
+});
+```
+
+Works with Vercel AI SDK too:
+
+```typescript
+import { shield } from "privacylens";
+import { openai } from "@ai-sdk/openai";
+
+const { text } = await generateText({
+  model: shield(openai("gpt-4o")),
+  prompt: "Summarise the contract for john@example.com",
 });
 ```
 
@@ -147,6 +169,12 @@ privacylens/
 ## Contributing
 
 Contributions are welcome! Please read [CONTRIBUTING.md](./CONTRIBUTING.md) first.
+
+## Releases
+
+Both packages are published automatically on GitHub release:
+- Python SDK → [PyPI](https://pypi.org/project/privacylens/) via `publish-pypi.yml`
+- TypeScript SDK → [npm](https://www.npmjs.com/package/privacylens) via `publish-npm.yml`
 
 ## License
 
