@@ -1164,3 +1164,359 @@ class TestStrandsModelWrapper:
         mock = self._make_mock_model({})
         wrapper = self._make_wrapper(mock)
         assert "StrandsModelWrapper" in repr(wrapper)
+
+
+# ---------------------------------------------------------------------------
+# Helpers for Anthropic streaming mocks
+# ---------------------------------------------------------------------------
+
+from unittest.mock import patch
+
+
+def _make_text_delta_event(text: str) -> MagicMock:
+    """Build a mock Anthropic content_block_delta event with a text_delta."""
+    event = MagicMock()
+    event.type = "content_block_delta"
+    event.delta.type = "text_delta"
+    event.delta.text = text
+    return event
+
+
+def _make_non_text_event() -> MagicMock:
+    """Build a mock Anthropic event that is NOT a text delta (e.g. message_start)."""
+    event = MagicMock()
+    event.type = "message_start"
+    return event
+
+
+class _SyncStreamCtxMgr:
+    """Sync context manager that yields a list of pre-built events."""
+
+    def __init__(self, events: list) -> None:
+        self._events = events
+
+    def __enter__(self) -> Any:
+        return iter(self._events)
+
+    def __exit__(self, *args: Any) -> bool:
+        return False
+
+
+class _AsyncStreamCtxMgr:
+    """Async context manager that yields a list of pre-built events."""
+
+    def __init__(self, events: list) -> None:
+        self._events = events
+
+    async def __aenter__(self) -> "_AsyncStreamCtxMgr":
+        return self
+
+    async def __aexit__(self, *args: Any) -> None:
+        pass
+
+    def __aiter__(self) -> Any:
+        return self._aiter()
+
+    async def _aiter(self) -> AsyncIterator[Any]:
+        for e in self._events:
+            yield e
+
+
+# ---------------------------------------------------------------------------
+# AnthropicAdapter — sync streaming
+# ---------------------------------------------------------------------------
+
+
+class TestAnthropicAdapterSyncStreaming:
+    """Tests for _wrap_sync_stream — PII masking in request + detokenization in events."""
+
+    def _make_adapter(self) -> AnthropicAdapter:
+        client = Anthropic(api_key="test-key")
+        return AnthropicAdapter(client, _make_pipeline())
+
+    def test_pii_masked_in_streaming_request(self) -> None:
+        """PII in messages must be tokenized before the streaming API call."""
+        captured: list[Any] = []
+
+        def fake_create(*, messages: Any, **kwargs: Any) -> Any:
+            captured.append(messages)
+            return _SyncStreamCtxMgr([])
+
+        adapter = self._make_adapter()
+        with patch.object(adapter.messages, "_real") as mock_real:
+            mock_real.create.side_effect = fake_create
+            list(adapter.messages.create(
+                messages=[{"role": "user", "content": "Email: user@example.com"}],
+                model="claude-3-opus-20240229",
+                max_tokens=100,
+                stream=True,
+            ))
+
+        sent = captured[0][0]["content"]
+        assert "user@example.com" not in sent
+        assert "[EMAIL_" in sent
+
+    def test_text_delta_tokens_detokenized(self) -> None:
+        """Tokens in text_delta events are replaced with original PII values."""
+        pipeline = _make_pipeline()
+        adapter = AnthropicAdapter(Anthropic(api_key="test-key"), pipeline)
+
+        # Tokenize first so the vault has the mapping
+        tokenized_msgs = pipeline.tokenize_messages(
+            [{"role": "user", "content": "user@example.com"}], "sess-1"
+        )
+        token = tokenized_msgs[0]["content"]  # e.g. "[EMAIL_1]"
+
+        events = [_make_text_delta_event(f"Reply to {token}")]
+        stream_mock = _SyncStreamCtxMgr(events)
+
+        with patch.object(adapter.messages, "_real") as mock_real:
+            mock_real.create.return_value = stream_mock
+            # Use the same session by patching _new_session_id
+            with patch("privacylens.adapters.anthropic._new_session_id", return_value="sess-1"):
+                collected = list(adapter.messages.create(
+                    messages=[{"role": "user", "content": "user@example.com"}],
+                    model="claude-3-opus-20240229",
+                    max_tokens=100,
+                    stream=True,
+                ))
+
+        assert collected[0].delta.text == "Reply to user@example.com"
+        assert "[EMAIL_" not in collected[0].delta.text
+
+    def test_non_text_events_pass_through_unchanged(self) -> None:
+        """Non-text-delta events (e.g. message_start) are yielded unchanged."""
+        adapter = self._make_adapter()
+        non_text = _make_non_text_event()
+        stream_mock = _SyncStreamCtxMgr([non_text])
+
+        with patch.object(adapter.messages, "_real") as mock_real:
+            mock_real.create.return_value = stream_mock
+            collected = list(adapter.messages.create(
+                messages=[{"role": "user", "content": "hello"}],
+                model="claude-3-opus-20240229",
+                max_tokens=100,
+                stream=True,
+            ))
+
+        assert collected[0] is non_text
+
+    def test_plain_text_no_tokens_passthrough(self) -> None:
+        """Text deltas without tokens are yielded unchanged."""
+        adapter = self._make_adapter()
+        event = _make_text_delta_event("Hello world")
+        stream_mock = _SyncStreamCtxMgr([event])
+
+        with patch.object(adapter.messages, "_real") as mock_real:
+            mock_real.create.return_value = stream_mock
+            collected = list(adapter.messages.create(
+                messages=[{"role": "user", "content": "Say hello"}],
+                model="claude-3-opus-20240229",
+                max_tokens=100,
+                stream=True,
+            ))
+
+        assert collected[0].delta.text == "Hello world"
+
+    def test_split_token_across_chunks_restored(self) -> None:
+        """A token split across two events is fully restored."""
+        pipeline = _make_pipeline()
+        adapter = AnthropicAdapter(Anthropic(api_key="test-key"), pipeline)
+
+        pipeline.tokenize_messages(
+            [{"role": "user", "content": "user@example.com"}], "sess-split"
+        )
+
+        # Split [EMAIL_1] across two events
+        events = [
+            _make_text_delta_event("Contact [EMA"),
+            _make_text_delta_event("IL_1] now"),
+        ]
+        stream_mock = _SyncStreamCtxMgr(events)
+
+        with patch.object(adapter.messages, "_real") as mock_real:
+            mock_real.create.return_value = stream_mock
+            with patch("privacylens.adapters.anthropic._new_session_id", return_value="sess-split"):
+                collected = list(adapter.messages.create(
+                    messages=[{"role": "user", "content": "user@example.com"}],
+                    model="claude-3-opus-20240229",
+                    max_tokens=100,
+                    stream=True,
+                ))
+
+        full = "".join(
+            e.delta.text for e in collected
+            if e.type == "content_block_delta" and e.delta.text
+        )
+        assert "user@example.com" in full
+        assert "[EMAIL_" not in full
+
+
+# ---------------------------------------------------------------------------
+# AnthropicAdapter — async streaming
+# ---------------------------------------------------------------------------
+
+
+class TestAnthropicAdapterAsyncStreaming:
+    """Tests for _wrap_async_stream."""
+
+    def _make_adapter(self) -> AnthropicAdapter:
+        client = AsyncAnthropic(api_key="test-key")
+        return AnthropicAdapter(client, _make_pipeline())
+
+    @pytest.mark.asyncio
+    async def test_pii_masked_in_async_streaming_request(self) -> None:
+        """PII in messages must be tokenized before the async streaming API call."""
+        captured: list[Any] = []
+
+        async def fake_create(*, messages: Any, **kwargs: Any) -> Any:
+            captured.append(messages)
+            return _AsyncStreamCtxMgr([])
+
+        adapter = self._make_adapter()
+        with patch.object(adapter.messages, "_real") as mock_real:
+            mock_real.create = fake_create
+            stream = await adapter.messages.acreate(
+                messages=[{"role": "user", "content": "SSN: 123-45-6789"}],
+                model="claude-3-opus-20240229",
+                max_tokens=100,
+                stream=True,
+            )
+            async for _ in stream:
+                pass
+
+        sent = captured[0][0]["content"]
+        assert "123-45-6789" not in sent
+        assert "[SSN_" in sent
+
+    @pytest.mark.asyncio
+    async def test_async_text_delta_tokens_detokenized(self) -> None:
+        """Tokens in async text_delta events are replaced with original PII values."""
+        pipeline = _make_pipeline()
+        adapter = AnthropicAdapter(AsyncAnthropic(api_key="test-key"), pipeline)
+
+        pipeline.tokenize_messages(
+            [{"role": "user", "content": "user@example.com"}], "async-sess-1"
+        )
+
+        events = [_make_text_delta_event("Reply to [EMAIL_1]")]
+        stream_mock = _AsyncStreamCtxMgr(events)
+
+        async def fake_create(*, messages: Any, **kwargs: Any) -> Any:
+            return stream_mock
+
+        with patch.object(adapter.messages, "_real") as mock_real:
+            mock_real.create = fake_create
+            with patch("privacylens.adapters.anthropic._new_session_id", return_value="async-sess-1"):
+                stream = await adapter.messages.acreate(
+                    messages=[{"role": "user", "content": "user@example.com"}],
+                    model="claude-3-opus-20240229",
+                    max_tokens=100,
+                    stream=True,
+                )
+                collected = [e async for e in stream]
+
+        assert collected[0].delta.text == "Reply to user@example.com"
+        assert "[EMAIL_" not in collected[0].delta.text
+
+    @pytest.mark.asyncio
+    async def test_async_non_text_events_pass_through(self) -> None:
+        """Non-text-delta events pass through unchanged in async streaming."""
+        adapter = self._make_adapter()
+        non_text = _make_non_text_event()
+
+        async def fake_create(*, messages: Any, **kwargs: Any) -> Any:
+            return _AsyncStreamCtxMgr([non_text])
+
+        with patch.object(adapter.messages, "_real") as mock_real:
+            mock_real.create = fake_create
+            stream = await adapter.messages.acreate(
+                messages=[{"role": "user", "content": "hello"}],
+                model="claude-3-opus-20240229",
+                max_tokens=100,
+                stream=True,
+            )
+            collected = [e async for e in stream]
+
+        assert collected[0] is non_text
+
+    @pytest.mark.asyncio
+    async def test_async_plain_text_passthrough(self) -> None:
+        """Text deltas without tokens pass through unchanged in async streaming."""
+        adapter = self._make_adapter()
+        event = _make_text_delta_event("Hello async world")
+
+        async def fake_create(*, messages: Any, **kwargs: Any) -> Any:
+            return _AsyncStreamCtxMgr([event])
+
+        with patch.object(adapter.messages, "_real") as mock_real:
+            mock_real.create = fake_create
+            stream = await adapter.messages.acreate(
+                messages=[{"role": "user", "content": "Say hello"}],
+                model="claude-3-opus-20240229",
+                max_tokens=100,
+                stream=True,
+            )
+            collected = [e async for e in stream]
+
+        assert collected[0].delta.text == "Hello async world"
+
+
+# ---------------------------------------------------------------------------
+# OpenAI async streaming — improved end-to-end test
+# ---------------------------------------------------------------------------
+
+
+class TestOpenAIAdapterAsyncStreamingE2E:
+    """End-to-end async streaming test: tokenization happens naturally."""
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_pii_masked_and_restored_end_to_end(self) -> None:
+        """Full pipeline: PII tokenized in request, token restored in streamed response."""
+        captured: list[Any] = []
+
+        def respond(request: httpx.Request) -> httpx.Response:
+            body = json.loads(request.content)
+            captured.append(body)
+            # Echo back whatever token was sent
+            sent = body["messages"][0]["content"]
+            token = sent  # the whole content is the token after masking
+            chunks = (
+                _sse_chunk("Your email is ")
+                + _sse_chunk(token)
+                + _sse_chunk(".", finish=True)
+                + _sse_done()
+            )
+            return httpx.Response(
+                200,
+                content=chunks,
+                headers={"content-type": "text/event-stream"},
+            )
+
+        respx.post(CHAT_URL).mock(side_effect=respond)
+
+        client = AsyncOpenAI(api_key="test-key")
+        adapter = OpenAIAdapter(client, _make_pipeline())
+
+        stream = await adapter.chat.completions.acreate(
+            messages=[{"role": "user", "content": "user@example.com"}],
+            model="gpt-4o",
+            stream=True,
+        )
+
+        collected = []
+        async for chunk in stream:
+            delta = chunk.choices[0].delta.content if chunk.choices else None
+            if delta:
+                collected.append(delta)
+
+        # Request must have been masked
+        sent_content = captured[0]["messages"][0]["content"]
+        assert "user@example.com" not in sent_content
+        assert "[EMAIL_" in sent_content
+
+        # Response must have original value restored
+        full = "".join(collected)
+        assert "user@example.com" in full
+        assert "[EMAIL_" not in full
