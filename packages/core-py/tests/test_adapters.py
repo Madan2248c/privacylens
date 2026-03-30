@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import AsyncIterator
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -1208,7 +1209,7 @@ class _AsyncStreamCtxMgr:
     def __init__(self, events: list) -> None:
         self._events = events
 
-    async def __aenter__(self) -> "_AsyncStreamCtxMgr":
+    async def __aenter__(self) -> _AsyncStreamCtxMgr:
         return self
 
     async def __aexit__(self, *args: Any) -> None:
