@@ -30,12 +30,14 @@ document$.subscribe(() => {
   const btn = document.createElement("button");
   btn.id = "ai-copy-all";
   btn.title = "Copy full docs for AI";
-  btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M19 21H8V7h11m0-2H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2m-3-4H4a2 2 0 0 0-2 2v14h2V3h12V1Z"/></svg>`;
+  btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M19 21H8V7h11m0-2H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2m-3-4H4a2 2 0 0 0-2 2v14h2V3h12V1Z"/></svg><span>Copy docs for AI</span>`;
 
   document.body.appendChild(btn);
 
   btn.addEventListener("click", () => {
     fetchAndCopy(SITE_BASE + "llms-full.txt", () => {
+      const span = btn.querySelector("span");
+      if (span) { span.textContent = "Copied!"; setTimeout(() => (span.textContent = "Copy docs for AI"), 2000); }
       btn.classList.add("ai-copied");
       setTimeout(() => btn.classList.remove("ai-copied"), 2000);
     });
