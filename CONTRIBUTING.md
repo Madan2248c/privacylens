@@ -1,71 +1,86 @@
 # Contributing to PrivacyLens
 
-Thanks for your interest in contributing! This is a monorepo with a TypeScript SDK and a Python SDK.
+Thanks for your interest in contributing to PrivacyLens.
 
-## Repository Structure
+## Prerequisites
 
+- Python 3.10+
+- Node.js 20+
+- Git
+- macOS or Linux shell environment (Windows contributors can use WSL2)
+
+## Local setup
+
+Run these commands from the repository root.
+
+### Python
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -e "packages/core-py[dev]"
 ```
-packages/
-├── core-ts/   # TypeScript SDK (Node.js, OpenAI, Vercel AI)
-└── core-py/   # Python SDK
-```
 
-## Getting Started
-
-### TypeScript (`packages/core-ts`)
+### TypeScript
 
 ```bash
 cd packages/core-ts
 npm install
-npm test
 ```
 
-### Python (`packages/core-py`)
+## Running tests
+
+### Python tests
 
 ```bash
 cd packages/core-py
-python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
 pytest
 ```
 
-## Workflow
+### TypeScript tests
 
-1. Fork the repo and create a branch from `main`: `git checkout -b feat/my-feature`
-2. Make your changes
-3. Add or update tests
-4. Run lint + typecheck + tests for the affected package
-5. Open a pull request against `main` with a clear description
-
-## Commit Message Format
-
-Use conventional commits:
-
-```
-feat: add support for custom detectors
-fix: handle overlapping spans correctly
-docs: update README with Python example
-test: add edge cases for detokenizer
+```bash
+cd packages/core-ts
+npm test
 ```
 
-## Adding a New Detector
+## Running linters and type checks
 
-1. Implement the `Detector` interface in the relevant package
-2. Export it from the package's public API
-3. Add tests
-4. Document it in the package README
+### Python (`ruff`, `mypy`)
 
-## Code Style
+```bash
+cd packages/core-py
+ruff check .
+mypy src
+```
 
-- **TypeScript**: ESLint + strict TypeScript, no `any` without justification
-- **Python**: Ruff for linting, mypy strict for type checking
+### TypeScript (`eslint`, `tsc`)
 
-## Reporting Issues
+```bash
+cd packages/core-ts
+npm run lint
+npm run typecheck
+```
 
-- Search existing issues before opening a new one
-- Include a minimal reproduction case
-- Specify your runtime version and OS
+## PR process
 
-## Questions?
+1. Fork the repository.
+2. Create a branch from `main`.
+3. Use one of these branch prefixes:
+   - `feat/` for features
+   - `fix/` for bug fixes
+   - `docs/` for documentation changes
+4. Open a PR against `main`.
 
-Open a [GitHub Discussion](https://github.com/Madan2248c/privacylens/discussions).
+### PR checklist
+
+- [ ] Tests pass for changed package(s)
+- [ ] No new lint/type-check errors (`ruff`, `mypy`, `eslint`, `tsc`)
+- [ ] Documentation updated when behavior or usage changes
+
+## Coding conventions
+
+This repository does not currently include `.kiro/steering/tech.md` in source control, so follow the enforced standards below:
+
+- **Python**: format and lint with `ruff`; keep `mypy` strict checks passing
+- **TypeScript**: keep `eslint` and strict TypeScript (`tsc --noEmit`) passing; avoid `any` unless justified
