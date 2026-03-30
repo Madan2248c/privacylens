@@ -80,7 +80,5 @@ npm run typecheck
 
 ## Coding conventions
 
-This repository does not currently include `.kiro/steering/tech.md` in source control, so follow the enforced standards below:
-
 - **Python**: format and lint with `ruff`; keep `mypy` strict checks passing
 - **TypeScript**: keep `eslint` and strict TypeScript (`tsc --noEmit`) passing; avoid `any` unless justified
