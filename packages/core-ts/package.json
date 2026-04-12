@@ -24,21 +24,22 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "js-yaml": "^4.1.0"
+    "js-yaml": "^4.1.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.5.0",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
     "@typescript-eslint/parser": "^7.0.0",
-    "ai": "^4.3.19",
+    "@vitest/coverage-v8": "^1.6.0",
+    "ai": "^6.0.158",
     "eslint": "^8.57.0",
     "fast-check": "^3.19.0",
     "msw": "^2.12.14",
     "openai": "^6.33.0",
     "tsup": "^8.0.0",
     "typescript": "^5.4.0",
-    "vitest": "^1.6.0",
-    "@vitest/coverage-v8": "^1.6.0"
+    "vitest": "^4.1.4"
   }
 }
