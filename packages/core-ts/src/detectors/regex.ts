@@ -20,16 +20,27 @@ const PHONE_RE =
 // SSN: NNN-NN-NNNN
 const SSN_RE = /\b\d{3}-\d{2}-\d{4}\b/g;
 
+// DATE OF BIRTH: MM/DD/YYYY | DD-MM-YYYY | YYYY-MM-DD
+const DOB_RE =
+  /\b(?:\d{2}\/\d{2}\/\d{4}|\d{2}-\d{2}-\d{4}|\d{4}-\d{2}-\d{2})\b/g;
+
+// IP ADDRESS: IPv4
+const IP_RE =
+  /\b(?:\d{1,3}\.){3}\d{1,3}\b/g;
+
 interface BuiltinPattern {
   entityType: string;
   source: string;
   flags: string;
 }
 
+
 const BUILTIN_PATTERNS: BuiltinPattern[] = [
   { entityType: "EMAIL", source: EMAIL_RE.source, flags: "g" },
   { entityType: "PHONE", source: PHONE_RE.source, flags: "g" },
   { entityType: "SSN", source: SSN_RE.source, flags: "g" },
+  { entityType: "DOB", source: DOB_RE.source, flags: "g" },         
+  { entityType: "IP_ADDRESS", source: IP_RE.source, flags: "g" },   
 ];
 
 // ---------------------------------------------------------------------------
