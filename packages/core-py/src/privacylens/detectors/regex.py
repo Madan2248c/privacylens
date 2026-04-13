@@ -31,10 +31,24 @@ _SSN_RE = re.compile(
     re.ASCII,
 )
 
+# DATE OF BIRTH: MM/DD/YYYY | DD-MM-YYYY | YYYY-MM-DD
+_DOB_RE = re.compile(
+    r"\b(?:\d{2}/\d{2}/\d{4}|\d{2}-\d{2}-\d{4}|\d{4}-\d{2}-\d{2})\b",
+    re.ASCII,
+)
+
+# IP ADDRESS: IPv4
+_IP_RE = re.compile(
+    r"\b(?:\d{1,3}\.){3}\d{1,3}\b",
+    re.ASCII,
+)
+
 _BUILTIN_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("EMAIL", _EMAIL_RE),
     ("PHONE", _PHONE_RE),
     ("SSN", _SSN_RE),
+    ("DOB", _DOB_RE),
+    ("IP_ADDRESS", _IP_RE),
 ]
 
 
@@ -52,7 +66,8 @@ class RegexDetector:
     """
 
     def __init__(self, config: DetectorConfig | None = None) -> None:
-        self._patterns: list[tuple[str, re.Pattern[str]]] = list(_BUILTIN_PATTERNS)
+        self._patterns: list[tuple[str, re.Pattern[str]]] = list(
+            _BUILTIN_PATTERNS)
 
         if config:
             for entry in config.get("patterns", []):
