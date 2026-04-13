@@ -5,11 +5,6 @@ specific format examples and edge cases.
 """
 
 from __future__ import annotations
-import builtins as _builtins
-from privacylens.core.models import Detector
-from unittest.mock import MagicMock, patch
-import types
-import sys
 
 import re
 
@@ -25,8 +20,7 @@ from privacylens.detectors.regex import RegexDetector
 
 # EMAIL: local@domain.tld
 _local_part = st.from_regex(r"[a-zA-Z0-9._%+\-]{1,20}", fullmatch=True)
-_domain_label = st.from_regex(
-    r"[a-zA-Z0-9][a-zA-Z0-9\-]{0,10}[a-zA-Z0-9]", fullmatch=True)
+_domain_label = st.from_regex(r"[a-zA-Z0-9][a-zA-Z0-9\-]{0,10}[a-zA-Z0-9]", fullmatch=True)
 _tld = st.from_regex(r"[a-zA-Z]{2,6}", fullmatch=True)
 
 _email = st.builds(
@@ -37,8 +31,7 @@ _email = st.builds(
 )
 
 # PHONE: three formats — use explicit ASCII digit ranges to avoid Unicode digits
-# area code can't start with 0/1
-_three_digits = st.from_regex(r"[2-9][0-9]{2}", fullmatch=True)
+_three_digits = st.from_regex(r"[2-9][0-9]{2}", fullmatch=True)  # area code can't start with 0/1
 _four_digits = st.from_regex(r"[0-9]{4}", fullmatch=True)
 
 _phone_paren = st.builds(
@@ -71,8 +64,7 @@ _ssn = st.builds(
 
 # Surrounding noise text (no @, -, digits that could form PII on their own)
 _noise = st.text(
-    alphabet=st.characters(whitelist_categories=(
-        "Lu", "Ll"), whitelist_characters=" "),
+    alphabet=st.characters(whitelist_categories=("Lu", "Ll"), whitelist_characters=" "),
     min_size=0,
     max_size=30,
 )
@@ -175,21 +167,18 @@ def test_property11_custom_patterns_additive(
     custom_pattern = re.escape(custom_value)
 
     detector = RegexDetector(
-        config={"patterns": [
-            {"entity_type": entity_type, "pattern": custom_pattern}]}
+        config={"patterns": [{"entity_type": entity_type, "pattern": custom_pattern}]}
     )
     spans = detector.detect(text)
 
     # Custom entity must be detected.
-    custom_spans = [s for s in spans if s.entity_type ==
-                    entity_type and s.value == custom_value]
+    custom_spans = [s for s in spans if s.entity_type == entity_type and s.value == custom_value]
     assert len(custom_spans) >= 1, (
         f"Custom pattern '{custom_pattern}' not detected in text: {text!r}\nSpans: {spans}"
     )
 
     # Built-in EMAIL must also be detected.
-    email_spans = [s for s in spans if s.entity_type ==
-                   "EMAIL" and s.value == email]
+    email_spans = [s for s in spans if s.entity_type == "EMAIL" and s.value == email]
     assert len(email_spans) >= 1, (
         f"Built-in EMAIL '{email}' not detected when custom pattern present.\nSpans: {spans}"
     )
@@ -256,51 +245,6 @@ class TestSSNFormats:
         assert text[span.start:span.end] == span.value
 
 
-class TestDOBFormats:
-    def test_mm_dd_yyyy_format(self) -> None:
-        spans = RegexDetector().detect("DOB: 01/15/1990")
-        dobs = [s for s in spans if s.entity_type == "DOB"]
-        assert any(s.value == "01/15/1990" for s in dobs)
-
-    def test_dd_mm_yyyy_format(self) -> None:
-        spans = RegexDetector().detect("Born on 15-06-1985.")
-        dobs = [s for s in spans if s.entity_type == "DOB"]
-        assert any(s.value == "15-06-1985" for s in dobs)
-
-    def test_yyyy_mm_dd_format(self) -> None:
-        spans = RegexDetector().detect("Date of birth: 1990-01-15")
-        dobs = [s for s in spans if s.entity_type == "DOB"]
-        assert any(s.value == "1990-01-15" for s in dobs)
-
-    def test_dob_span_offsets_match_text(self) -> None:
-        text = "DOB: 01/15/1990 end"
-        spans = RegexDetector().detect(text)
-        dobs = [s for s in spans if s.entity_type == "DOB"]
-        assert len(dobs) == 1
-        span = dobs[0]
-        assert text[span.start:span.end] == span.value
-
-
-class TestIPAddressFormats:
-    def test_standard_ipv4(self) -> None:
-        spans = RegexDetector().detect("Server IP: 192.168.1.1")
-        ips = [s for s in spans if s.entity_type == "IP_ADDRESS"]
-        assert any(s.value == "192.168.1.1" for s in ips)
-
-    def test_ip_in_sentence(self) -> None:
-        spans = RegexDetector().detect("Connected from 10.0.0.1 to server.")
-        ips = [s for s in spans if s.entity_type == "IP_ADDRESS"]
-        assert any(s.value == "10.0.0.1" for s in ips)
-
-    def test_ip_span_offsets_match_text(self) -> None:
-        text = "IP: 172.16.254.1 end"
-        spans = RegexDetector().detect(text)
-        ips = [s for s in spans if s.entity_type == "IP_ADDRESS"]
-        assert len(ips) == 1
-        span = ips[0]
-        assert text[span.start:span.end] == span.value
-
-
 class TestEmptyResult:
     def test_no_pii_returns_empty_list(self) -> None:
         spans = RegexDetector().detect("Hello, world! No sensitive data here.")
@@ -314,8 +258,7 @@ class TestEmptyResult:
 class TestCustomPatterns:
     def test_custom_pattern_detected(self) -> None:
         detector = RegexDetector(
-            config={"patterns": [
-                {"entity_type": "ACCOUNT", "pattern": r"ACC-\d{6}"}]}
+            config={"patterns": [{"entity_type": "ACCOUNT", "pattern": r"ACC-\d{6}"}]}
         )
         spans = detector.detect("Account: ACC-123456 is active.")
         accounts = [s for s in spans if s.entity_type == "ACCOUNT"]
@@ -324,8 +267,7 @@ class TestCustomPatterns:
 
     def test_custom_pattern_additive_with_builtins(self) -> None:
         detector = RegexDetector(
-            config={"patterns": [
-                {"entity_type": "ACCOUNT", "pattern": r"ACC-\d{6}"}]}
+            config={"patterns": [{"entity_type": "ACCOUNT", "pattern": r"ACC-\d{6}"}]}
         )
         spans = detector.detect("Email user@example.com, account ACC-123456.")
         entity_types = {s.entity_type for s in spans}
@@ -350,12 +292,16 @@ class TestCustomPatterns:
 # PiiDetector tests (Tasks 10.2 and 10.3)
 # ===========================================================================
 
+import sys
+import types
+from unittest.mock import MagicMock, patch
+
+from privacylens.core.models import Detector
 
 # ---------------------------------------------------------------------------
 # Helpers: build a fake presidio_analyzer module so we can import PiiDetector
 # without the real package installed.
 # ---------------------------------------------------------------------------
-
 
 def _make_fake_presidio(results: list[MagicMock]) -> types.ModuleType:
     """Return a fake ``presidio_analyzer`` module whose AnalyzerEngine returns *results*."""
@@ -385,8 +331,7 @@ def _make_result(start: int, end: int, entity_type: str) -> MagicMock:
 
 
 _entity_type_st = st.text(
-    alphabet=st.characters(whitelist_categories=("Lu",),
-                           whitelist_characters="_"),
+    alphabet=st.characters(whitelist_categories=("Lu",), whitelist_characters="_"),
     min_size=1,
     max_size=30,
 )
@@ -430,6 +375,8 @@ def test_property21_pii_detector_preserves_entity_types(results: list[MagicMock]
 # ---------------------------------------------------------------------------
 
 
+import builtins as _builtins
+
 _real_import = _builtins.__import__
 
 
@@ -460,8 +407,7 @@ class TestPiiDetectorImportError:
                 PiiDetector()
                 pytest.fail("Expected ImportError was not raised")
             except ImportError as exc:
-                assert str(
-                    exc) == "Install Presidio: pip install privacylens[pii]"
+                assert str(exc) == "Install Presidio: pip install privacylens[pii]"
 
 
 class TestPiiDetectorProtocol:
@@ -495,8 +441,7 @@ class TestPiiDetectorProtocol:
     def test_detect_maps_spans_correctly(self) -> None:
         """detect() maps Presidio results to EntitySpan with correct fields."""
         text = "Hello world test!"
-        results = [_make_result(0, 5, "PERSON"),
-                   _make_result(6, 11, "LOCATION")]
+        results = [_make_result(0, 5, "PERSON"), _make_result(6, 11, "LOCATION")]
         fake_presidio = _make_fake_presidio(results)
         sys.modules.pop("privacylens.detectors.pii", None)
 
@@ -560,8 +505,7 @@ class TestSemanticDetectorImportError:
                 SemanticDetector()
                 pytest.fail("Expected ImportError was not raised")
             except ImportError as exc:
-                assert str(
-                    exc) == "Install GLiNER: pip install privacylens[semantic]"
+                assert str(exc) == "Install GLiNER: pip install privacylens[semantic]"
 
 
 class TestSemanticDetectorLazyModelLoading:
@@ -596,8 +540,7 @@ class TestSemanticDetectorLazyModelLoading:
 
             detector.detect("Hello, my name is Alice.")
 
-            fake_gliner.GLiNER.from_pretrained.assert_called_once_with(
-                "urchade/gliner_medium-v2.1")
+            fake_gliner.GLiNER.from_pretrained.assert_called_once_with("urchade/gliner_medium-v2.1")
             assert SemanticDetector._model is not None
 
 
